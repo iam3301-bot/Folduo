@@ -2,9 +2,9 @@
 
 面向 **三星 Galaxy Z Fold8 Ultra（SM-F9760）／One UI 9.0** 的 Folduo 分支。默认全中文，以 Android 原生界面呈现液态玻璃的通透、高光和悬浮层次。
 
-**当前交付为中文界面预览版。** 已在 SM-F9760／Android 17／One UI 9.0 安装运行；保留设备原壁纸，后台折叠动画默认关闭。连续角度及真实双屏开合尚未完成验证。
+**开发中，暂缓交付。** 中文界面已在 SM-F9760／Android 17／One UI 9.0 安装运行，双屏保持、应用跨屏移动与画面捕获已通过组件检查。保留现有壁纸时仍缺少连续精细角度，真实开合动画尚未通过验证。此前预览包已转为发布草稿，不作为可用成品。
 
-[下载安装包](https://github.com/iam3301-bot/Folduo/releases) · [中文安装指南](docs/安装指南.md) · [验证记录](docs/验证记录.md) · [原项目](https://github.com/bunkaich/Folduo)
+[安装与构建说明](docs/安装指南.md) · [验证记录](docs/验证记录.md) · [原项目](https://github.com/bunkaich/Folduo)
 
 ## 本版本的变化
 
