@@ -10,7 +10,6 @@ import java.io.*;
 import java.lang.reflect.*;
 import java.util.*;
 import java.util.concurrent.*;
-import java.util.regex.*;
 
 /** Shizuku UserService: shell authority stays in this process, not in the UI. */
 public final class ShellBridge extends IShellBridge.Stub {
@@ -98,17 +97,16 @@ public final class ShellBridge extends IShellBridge.Stub {
     private void startLogReader(int generation){
         new Thread(()->{
             long started=System.currentTimeMillis();
-            Pattern pattern=Pattern.compile("^\\s*([0-9.]+)\\s+\\d+\\s+\\d+\\s+I\\s+SprWallpaper\\|FoldInteractive:\\s+onCommand: action\\[jp\\.bunkaich\\.sukashimotion\\.READ_ANGLE\\], mCurrentAngle\\[([0-9.]+)\\], isVisible\\[true\\]");
+            WallpaperAngleLog parser=new WallpaperAngleLog(BuildConfig.APPLICATION_ID);
             java.lang.Process process=null;
             try{
-                process=new ProcessBuilder("logcat","-v","epoch","-T","1","-s","SprWallpaper|FoldInteractive:I","*:S").redirectErrorStream(true).start();
+                process=new ProcessBuilder("logcat","-v","epoch","-T","1","-s","SprWallpaper|FoldInteractive:V","*:S").redirectErrorStream(true).start();
                 synchronized(this){if(generation!=angleGeneration){process.destroy();return;}logReader=process;}
                 try(BufferedReader reader=new BufferedReader(new InputStreamReader(process.getInputStream()))){
                     String line;while(generation==angleGeneration&&(line=reader.readLine())!=null){
-                        Matcher m=pattern.matcher(line);if(!m.find())continue;
-                        long wallTime=(long)(Double.parseDouble(m.group(1))*1000),age=System.currentTimeMillis()-wallTime;
-                        if(wallTime<started||age< -50||age>600)continue;
-                        emit(Float.parseFloat(m.group(2)),SystemClock.elapsedRealtime()-Math.max(0,age),1,generation);
+                        long now=System.currentTimeMillis();
+                        WallpaperAngleLog.Reading reading=parser.parse(line,started,now);if(reading==null)continue;
+                        emit(reading.angle(),SystemClock.elapsedRealtime()-Math.max(0,now-reading.wallTime()),1,generation);
                     }
                 }
             }catch(Exception e){if(generation==angleGeneration)error=message(e);}

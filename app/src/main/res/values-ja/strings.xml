@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+<?xml version='1.0' encoding='utf-8'?>
 <resources>
     <string name="language_title">言語 / Language</string>
     <string name="language_current">言語 / Language: %1$s</string>
@@ -174,4 +174,55 @@
     <string name="home_open">Folduoのホームを開く</string>
     <string name="home_default">Folduoをホームアプリにする</string>
     <string name="home_setup">Folduoのホーム画面も使えます。開閉演出が有効なときは、選んだアプリを操作中の画面へ表示します。アイコンは長押しで入れ替えられます。</string>
+    <string name="language_chinese">简体中文</string>
+    <string name="tab_motion">演出</string>
+    <string name="tab_appearance">外観</string>
+    <string name="tab_settings">設定</string>
+    <string name="dashboard_eyebrow">開閉に、光を</string>
+    <string name="dashboard_title">Folduo</string>
+    <string name="dashboard_body">開くたび、閉じるたび、軽やかに。</string>
+    <string name="motion_status">演出の状態</string>
+    <string name="quick_start">使い始める</string>
+    <string name="preview_hint">権限なしで開閉の演出を試せます。</string>
+    <string name="appearance_title">光を、自分らしく。</string>
+    <string name="appearance_body">透明感のあるガラス、読みやすい内容。</string>
+    <string name="glass_title">リキッドガラス</string>
+    <string name="glass_description">縁の屈折、柔らかな光、浮かぶレイヤー。</string>
+    <string name="glass_opacity">ガラスの濃さ</string>
+    <string name="glass_clear">クリア</string>
+    <string name="glass_tinted">柔らかな色合い</string>
+    <string name="glass_value">ガラスの濃さ %1$d%%</string>
+    <string name="appearance_hint">設定、ホームのカード、ナビゲーションのガラスを調整します。すぐに反映され、自動保存されます。</string>
+    <string name="glass_sample_title">動く光</string>
+    <string name="glass_sample_body">ちょうどよい透明感。</string>
+    <string name="reduce_motion">動きを減らす</string>
+    <string name="reduce_motion_body">ボタンの押下時の拡大縮小を無効にします。手動プレビューと実際の開閉演出は維持されます。</string>
+    <string name="device_title">端末と互換性</string>
+    <string name="device_details">%1$s · Android %2$s</string>
+    <string name="device_verified">この機種は上流で One UI 8.5 の検証済みです。One UI 9.0 の実機検証は未実施です。</string>
+    <string name="device_preview_only">この機種は画面制御の対象外です。ホームと演出プレビューを使用できます。</string>
+    <string name="wallpaper_title">インタラクティブ壁紙</string>
+    <string name="wallpaper_body">細かな角度はセンサーや Samsung の壁紙から取得します。Fold8 Ultra は実機での確認が必要です。Fold7 の壁紙設定をそのまま適用しないでください。</string>
+    <string name="read_setup">中国語の設定ガイド</string>
+    <string name="setup_step_1">手順 1 · 補助サービスに接続</string>
+    <string name="setup_step_2">手順 2 · 重ねて表示を許可</string>
+    <string name="setup_step_3">手順 3 · 開閉演出を有効にする</string>
+    <string name="setup_overlay_body">開閉中の画面と内側のナビゲーションを表示します。</string>
+    <string name="learn_more">仕組みと使い方</string>
+    <string name="permission_summary">Shizuku に接続し、重ねて表示を許可して始めましょう。</string>
+    <string name="app_version">中国語ガラス版 %1$s</string>
+    <string name="preview_title">開閉プレビュー</string>
+    <string name="preview_subtitle">スライダーでガラスと画像の関係を確認できます。</string>
+    <string name="privacy_short">画像はメモリー内のみで処理</string>
+    <string name="no_apps_found">該当するアプリがありません</string>
+    <string name="diagnostic_system_error">システム操作に失敗しました。Shizuku、OS、壁紙の設定を確認してください。</string>
+    <string name="diagnostic_sensor">センサー %1$d</string>
+    <string name="diagnostic_display_states">内側 %1$d / 外側 %2$d / 現在 %3$d / 基本 %4$d</string>
+    <string name="settings_language">表示言語</string>
+    <string name="accessibility_title">動きの効果</string>
+    <string name="fold_illustration">半開きのスマートフォン。ヒンジでつながる透明な二つの画面</string>
+    <string name="about_title">Folduo について</string>
+    <string name="about_body">オープンソース Folduo の中国語版。ガラスの質感を参考にした Android ネイティブのデザインです。</string>
+    <string name="device_fold8">SM-F9760 の機能確認に対応しています。双画面、細かな角度、開閉動作は One UI 9.0 の実機で検証が必要です。</string>
+    <string name="app_name">Folduo</string>
 </resources>

@@ -1,125 +1,52 @@
-**Vibe-coded with GPT-6 Astra in Codex.**
+# 折叠流光 · Folduo 中文玻璃版
 
-English | [日本語](README.ja.md)
+面向 **三星 Galaxy Z Fold8 Ultra（SM-F9760）／One UI 9.0** 的 Folduo 分支。默认全中文，以 Android 原生界面呈现液态玻璃的通透、高光和悬浮层次。
 
-# Folduo
+**当前交付为中文界面预览版。** 已在 SM-F9760／Android 17／One UI 9.0 安装运行；保留设备原壁纸，后台折叠动画默认关闭。连续角度及真实双屏开合尚未完成验证。
 
-I built this out of curiosity. I don't plan to actively develop or maintain it. I may make changes if something sparks my interest, but otherwise expect this repository to remain mostly untouched.
+[下载安装包](https://github.com/iam3301-bot/Folduo/releases) · [中文安装指南](docs/安装指南.md) · [验证记录](docs/验证记录.md) · [原项目](https://github.com/bunkaich/Folduo)
 
-An experimental Galaxy Z Fold7 app that uses hinge angle to create a frosted-glass transition between the cover and inner screens. It holds an app's image in place with parallax and blur while the phone folds, then hands over to the app on the other display. It works with regular apps without replacing your launcher.
+## 本版本的变化
 
-[Download v0.1.21](https://github.com/bunkaich/Folduo/releases/tag/v0.1.21)
+- 设置、桌面、预览、通知、恢复提示及错误信息均已中文化。首次启动默认简体中文；仍可手动选择英语或日语。
+- 主界面分为“流光／外观／设置”，统一使用玻璃面板和悬浮导航；支持玻璃浓度调节及减少按压动态效果。
+- 玻璃材质通过原生 RuntimeShader 实现，对同一程序生成背景进行边缘位移采样和柔化，再叠加可调浓度与高光。不是调用 iOS 的私有组件。
+- 新增 SM-F9760 型号入口；启用时继续检查三星并行屏幕状态。独立包名、独立签名，保留原 MIT 许可与第三方声明。
+- 兼容独立包名及 One UI 9.0 的壁纸角度日志格式，提供只读设备检查工具。
+- 修复 One UI 9.0 状态栏初始化时序问题，以及内屏悬浮导航未跟随应用语言的问题。
 
-## Requirements
+## 界面预览
 
-- **Galaxy Z Fold7 SM-F966Z only.** Display control is disabled on other models.
-- Tested on Android 16 / One UI 8.5, build `F966ZSCS1BZH4`.
-- [Shizuku](https://shizuku.rikka.app/guide/setup/), installed and running. Tested with `13.6.0.r1086.2650830c`.
-- The supported Samsung stock interactive wallpaper, configured as described below.
+下图为 Android 17 模拟器原生界面截图；分辨率按 SM-F9760 内外屏设置，不能代替三星真实开合测试。
 
-No root required. Once set up, it can run without USB if Shizuku is started through wireless debugging. Shizuku must be restarted after a reboot. Long-term stability without USB has not been verified.
+<img src="docs/images/cover.png" width="260" alt="中文流光主界面"> <img src="docs/images/appearance.png" width="260" alt="玻璃浓度与动态效果设置">
 
-## Setup
+## 兼容性范围
 
-Folduo supports English and Japanese. At the top of the app, tap **Language / 言語** and choose **English**, **日本語**, or **System default**. The choice is saved and also appears in Android’s app language settings. Japanese devices use Japanese by default; other devices use English.
+| 项目 | 范围 |
+| --- | --- |
+| 安装系统 | Android 13 起；编译 SDK 37，target SDK 36 |
+| 目标机型 | Galaxy Z Fold8 Ultra / SM-F9760 / One UI 9.0 |
+| 原项目的已测机型 | Fold7 SM-F966Z / Android 16 / One UI 8.5 |
+| 折叠动画依赖 | Shizuku、悬浮显示、三星双屏并行状态，以及持续的精细角度来源 |
+| 真机验证情况 | 以[验证记录](docs/验证记录.md)为准，不将模拟器通过当作三星双屏验证 |
 
-### 1. Start Shizuku
+本应用保持两块屏幕同时点亮，并在开合时显示临时静止画面。画面只保存在内存中，不保存、不上传。桌面和效果预览可以在没有 Shizuku 的情况下使用。
 
-Follow the [official setup guide](https://shizuku.rikka.app/guide/setup/) to install and start Shizuku using wireless debugging or a computer.
+## 构建
 
-### 2. Configure the stock wallpaper
-
-Fine-grained angles come from Samsung's interactive wallpaper through a Shizuku helper. On the tested device, the standard hinge sensor mainly reported 0°, 90° and 180°. This app does not estimate the angle using two gyroscopes.
-
-1. Stop Folduo and any other fold-animation or display-control helpers.
-2. Set the inner home screen to the Samsung stock interactive wallpaper identified internally as `video_002.mp4`. The cover home screen must use its matching stock image, `sub_wallpaper_002`. Wallpaper names in Settings vary by OS version.
-3. To get fine-grained angles on the cover screen too, use the helper below to apply the same stock interactive wallpaper there. **This changes the cover home wallpaper in One UI as well.** Keep your original wallpaper if you want to restore it later.
-
-Download and extract `folduo-wallpaper-setup-0.1.21.zip` from the release. Install Python 3 and Android SDK platform-tools (ADB). Connect one phone with USB debugging authorized, then run these commands in the extracted folder:
-
-```sh
-python3 cover-wallpaper.py status
-python3 cover-wallpaper.py apply
-```
-
-`status` checks the wallpaper without changing it. `apply` changes the cover home wallpaper only, not the lock screen. Add `--adb /path/to/adb` if ADB is not on your PATH, or `--serial DEVICE_SERIAL` if multiple devices are connected.
-
-The helper refuses to overwrite unsupported or custom wallpapers. If it reports `other wallpaper` or `Expected inner angle-aware wallpaper unavailable`, the required wallpaper is not configured. It uses assets already installed on your phone; no Samsung wallpaper files are included here.
-
-To build the helper yourself, prepare the [build environment](#build-from-source), then run from the repository root:
-
-```sh
-python3 tools/build-wallpaper-helper.py
-python3 tools/cover-wallpaper.py status
-python3 tools/cover-wallpaper.py apply
-```
-
-### 3. Install and start the app
-
-1. Install `Folduo-0.1.21.apk` from the release. With ADB: `adb install -r Folduo-0.1.21.apk`.
-2. Open **Folduo**, tap **Connect Shizuku**, and grant access.
-3. Tap **Allow display over other apps**. Allow notifications too.
-4. Read the screen-capture explanation, then tap **Allow temporary screen access and enable**.
-5. With the phone unlocked, close it fully once to initialize. Open an app such as Calculator and slowly fold and unfold the phone.
-
-## Controls and limitations
-
-The cover screen uses Samsung's normal navigation. The inner screen has a small custom bar for **Recents, Home, Back and Settings**. Native navigation gestures and the notification/quick-settings shade are not fully available on the inner screen. Use the custom bar, the cover screen, or stop the app when you need the normal controls.
-
-- Both displays are kept on while active, increasing battery use. Normal display control resumes when stopped or locked.
-- The transition uses a frozen image. Video and games do not keep playing in that image.
-- Home, Recents and other system screens are not handled like regular app tasks. Protected screens and apps that refuse display migration are unsupported.
-- App resizing can still cause layout shifts. Samsung's private APIs and wallpaper responses may change after OS updates.
-- If Shizuku stops, the animation stops. Automatic recovery is not guaranteed.
-
-## Folduo home
-
-To use the included launcher, tap **Use Folduo as the home app** in Folduo settings and select Folduo. Tap an icon to open an app, long-press to replace it, or use **All apps** to browse installed apps. Tap the **Folduo** button on the home screen to return to settings. English and Japanese are supported.
-
-On the tested Fold7, Samsung redirects new app launches from the inner display to the cover display. Folduo home moves only the selected app to the inner display and restores the selected home when returning. This does not fix other launchers.
-
-Three Calculator/home round trips, moving the home between both displays, long-press selection and opening settings passed on the phone with both displays held on by the helper. The final check with physical folding is still pending. If an app does not open after unfolding, close the phone and launch it from the cover home screen.
-
-## Stop and restore
-
-- **Stop:** open the app and tap **Stop and release display control**. Do this before uninstalling.
-- **Resume:** make sure Shizuku is running, then use **Resume** in the notification or **Resume animation** in the app. Unlock and close the phone fully once.
-- **After a reboot:** start Shizuku again, then resume the app if needed.
-- **If the display or controls get stuck:** close the phone and stop the app from the cover screen. If that is not possible, reboot and disable the app's always-on mode before restarting Shizuku.
-- **Restore your wallpaper:** stop the app and choose a wallpaper in Android Settings. To restore the specific stock cover image changed by the helper, run this in the extracted helper folder:
-
-```sh
-python3 cover-wallpaper.py restore-stock
-```
-
-From a source checkout, use `python3 tools/cover-wallpaper.py restore-stock`. This restores the known stock image, not an arbitrary previous wallpaper. It refuses to overwrite a different wallpaper selected since setup.
-
-## Build from source
-
-Use Git, JDK 17 and the Android SDK. Set `JAVA_HOME` to your JDK and `ANDROID_HOME` to your SDK; add `platform-tools` to PATH for ADB.
+准备 JDK 17 或兼容版本与 Android SDK：
 
 ```sh
 sdkmanager "platforms;android-37.0" "build-tools;36.0.0" "platform-tools"
-sdkmanager --licenses
-
-git clone https://github.com/bunkaich/Folduo.git
-cd Folduo
-git checkout v0.1.21
-./gradlew :app:assembleRelease :app:testDebugUnitTest :app:lintRelease
+python3 tools/check-chinese.py
+./gradlew :app:assembleDebug :app:testDebugUnitTest :app:lintRelease
 ```
 
-Output: `app/build/outputs/apk/release/app-release.apk`. Use `gradlew.bat` on Windows. Builds were verified on macOS with Java 17; Windows and Linux have not been tested end to end.
+调试 APK 位于 `app/build/outputs/apk/debug/app-debug.apk`。正式签名与 release 构建方式见[安装指南](docs/安装指南.md#源码与构建)。
 
-The wrapper pins Gradle 9.5.1 and verifies its checksum. AGP is 9.2.1; compile SDK is 37, target SDK is 36, and minimum SDK is 33. Initial builds need internet access to download dependencies. The wallpaper helper also needs Python 3.
+## 来源与许可
 
-The release APK uses the existing experimental debug signing certificate. Signing keys are not published. Your own build uses your local certificate and cannot directly replace the release APK. Stop and uninstall the existing app before switching signatures; settings and permissions will need to be configured again. Uninstalling does not restore the wallpaper.
+原项目：[bunkaich/Folduo](https://github.com/bunkaich/Folduo)。原始代码采用 [MIT](LICENSE)，依赖声明见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。保留[上游英文说明](README.en.md)和[上游日文说明](README.ja.md)以便对照原版行为。
 
-Release downloads include `SHA256SUMS`. Compare the APK with `shasum -a 256 Folduo-0.1.21.apk` on macOS or `sha256sum Folduo-0.1.21.apk` on Linux.
-
-## Screen access
-
-Shizuku grants ADB shell-level access. Captured images are used in memory and are not saved or uploaded by the app. Protected screens are excluded. The app has no internet permission, analytics or ads. Do not post private screenshots, device serials or unedited diagnostic logs in public issues.
-
-## License
-
-Original code: [MIT](LICENSE). See [third-party notices](THIRD_PARTY_NOTICES.md) for dependencies. No Apple or Samsung UI assets, wallpapers or videos are distributed. This project is not affiliated with Apple, Samsung or Shizuku.
+设计参考 [Apple iOS 27](https://www.apple.com/os/ios/) 的 Liquid Glass 材质与可读性。界面素材由代码绘制，不分发苹果或三星的专有图标、壁纸或视频。

@@ -1,19 +1,43 @@
 plugins { id("com.android.application") }
+val releaseKeys = providers.environmentVariable("FOLDUO_SIGNING_DIR").orNull
+val debugKeyFile = rootProject.file(".local-signing/debug.keystore")
+val createDebugKey = tasks.register<Exec>("createLocalDebugKey") {
+ outputs.file(debugKeyFile)
+ onlyIf { !debugKeyFile.exists() }
+ doFirst { debugKeyFile.parentFile.mkdirs() }
+ commandLine("${System.getProperty("java.home")}/bin/keytool", "-genkeypair", "-noprompt",
+  "-keystore", debugKeyFile.absolutePath, "-storepass", "android", "-keypass", "android",
+  "-alias", "androiddebugkey", "-keyalg", "RSA", "-validity", "10000",
+  "-dname", "CN=Android Debug,O=Android,C=US")
+}
+tasks.configureEach { if (name == "validateSigningDebug") dependsOn(createDebugKey) }
 android {
  namespace = "jp.bunkaich.sukashimotion"
  compileSdk = 37
  buildToolsVersion = "36.0.0"
  defaultConfig {
-  applicationId = "jp.bunkaich.sukashimotion"
+  applicationId = "io.github.iam3301.folduo"
   minSdk = 33
   targetSdk = 36
-  versionCode = 41
-  versionName = "0.1.21"
+  versionCode = 43
+  versionName = "0.2.0-zh-glass"
   testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
  }
  buildFeatures { buildConfig = true; aidl = true }
  compileOptions { sourceCompatibility = JavaVersion.VERSION_17; targetCompatibility = JavaVersion.VERSION_17 }
- buildTypes { release { isMinifyEnabled = false; signingConfig = signingConfigs.getByName("debug") } }
+ signingConfigs {
+  getByName("debug") { storeFile = debugKeyFile }
+  if (releaseKeys != null) create("chineseRelease") {
+   storeFile = file("$releaseKeys/folduo-release.jks")
+   storePassword = file("$releaseKeys/password.txt").readText().trim()
+   keyAlias = "folduo"
+   keyPassword = storePassword
+  }
+ }
+ buildTypes { release {
+  isMinifyEnabled = false
+  if (releaseKeys != null) signingConfig = signingConfigs.getByName("chineseRelease")
+ } }
 }
 dependencies {
  implementation("dev.rikka.shizuku:api:13.1.5")

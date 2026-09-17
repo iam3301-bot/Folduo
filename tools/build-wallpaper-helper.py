@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Android SDKとJava 17から、前面壁紙の設定補助をビルドする。端末の操作はしない。"""
+"""使用 Android SDK 和 Java 17 构建外屏壁纸辅助工具，不操作设备。"""
 import argparse
 import os
 from pathlib import Path
@@ -14,7 +14,7 @@ def main():
     parser.add_argument('--sdk', default=os.environ.get('ANDROID_HOME') or os.environ.get('ANDROID_SDK_ROOT'))
     args = parser.parse_args()
     if not args.sdk:
-        parser.error('ANDROID_HOME または --sdk でAndroid SDKを指定してください。')
+        parser.error('请通过 ANDROID_HOME 或 --sdk 指定 Android SDK。')
     sdk = Path(args.sdk).expanduser().resolve()
     android = sdk / 'platforms/android-37.0/android.jar'
     if not android.is_file():
@@ -25,7 +25,7 @@ def main():
     java_home = os.environ.get('JAVA_HOME')
     javac = str(Path(java_home) / 'bin' / ('javac' + suffix)) if java_home else shutil.which('javac')
     if not javac or not android.is_file() or not d8.is_file():
-        parser.error('Java 17、Android SDK platform 37、build-tools 36.0.0 が必要です。')
+        parser.error('需要 Java 17、Android SDK platform 37 和 build-tools 36.0.0。')
     build = tools / 'build'
     build.mkdir(exist_ok=True)
     output = tools / 'cover-wallpaper-setup.jar'
@@ -44,10 +44,10 @@ def main():
                         '--output', str(dex_jar), str(class_jar)], check=True)
         with zipfile.ZipFile(dex_jar, 'a') as archive:
             if 'classes.dex' not in archive.namelist():
-                raise RuntimeError('D8の出力にclasses.dexがありません。')
+                raise RuntimeError('D8 输出中缺少 classes.dex。')
             archive.write(tools.parent / 'LICENSE', 'META-INF/LICENSE')
         shutil.copy2(dex_jar, output)
-    print('生成しました:', output)
+    print('已生成：', output)
 
 
 if __name__ == '__main__':

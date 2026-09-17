@@ -8,6 +8,13 @@ import java.util.regex.Pattern;
 
 /** Resolve at the UI boundary so cached statuses also follow the current app language. */
 final class UiText {
+    static Context localizedWindow(Context window) {
+        var locales=window.getSystemService(android.app.LocaleManager.class).getApplicationLocales();
+        if(locales.isEmpty())return window;
+        var config=new android.content.res.Configuration(window.getResources().getConfiguration());
+        config.setLocales(locales);
+        return window.createConfigurationContext(config);
+    }
     private static final Pattern TOKEN=Pattern.compile("@folduo/([a-z_]+)");
     private final int resource;
     private final String raw;
@@ -19,6 +26,17 @@ final class UiText {
     boolean is(int id){return resource==id;}
     String resolve(Context context){
         if(resource==0){
+            if ("zh".equals(context.getResources().getConfiguration().getLocales().get(0).getLanguage())) {
+                var token = TOKEN.matcher(raw);
+                if (token.find()) {
+                    int id=shellMessage(token.group(1));
+                    return context.getString(id==0?R.string.unknown_error:id);
+                }
+                // Keep technical exception messages out of the Chinese user-facing surfaces.
+                // The original raw payload remains available to diagnostic logs and storage.
+                if (!raw.isBlank() && !raw.matches("(?s).*[\\p{IsHan}].*") && raw.matches("(?s).*[A-Za-z].*"))
+                    return context.getString(R.string.diagnostic_system_error);
+            }
             var matcher=TOKEN.matcher(raw);StringBuffer result=new StringBuffer();
             while(matcher.find()){
                 int id=shellMessage(matcher.group(1));

@@ -1,0 +1,29 @@
+name: Android 中文版检查
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+      - uses: gradle/actions/setup-gradle@v4
+      - name: 安装编译依赖
+        run: sdkmanager 'platforms;android-37.0' 'build-tools;36.0.0'
+      - name: 检查中文资源
+        run: python3 tools/check-chinese.py
+      - name: 构建与检查
+        run: ./gradlew :app:assembleDebug :app:testDebugUnitTest :app:lintRelease
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Folduo-Chinese-debug
+          path: app/build/outputs/apk/debug/app-debug.apk

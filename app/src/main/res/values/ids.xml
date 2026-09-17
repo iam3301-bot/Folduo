@@ -1,3 +1,7 @@
 <resources>
     <item name="language_button" type="id"/>
+    <item name="nav_motion" type="id"/>
+    <item name="nav_appearance" type="id"/>
+    <item name="nav_settings" type="id"/>
+    <item name="glass_concentration" type="id"/>
 </resources>

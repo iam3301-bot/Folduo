@@ -28,9 +28,9 @@ public final class CoverWallpaperSetup {
     private static void run(String[] args) throws Exception {
         String action = args.length == 0 ? "status" : args[0];
         if (!action.equals("status") && !action.equals("apply") && !action.equals("restore-stock"))
-            throw new IllegalArgumentException("Use status, apply, or restore-stock");
+            throw new IllegalArgumentException("操作应为 status、apply 或 restore-stock");
         if (android.os.Process.myUid() != 2000 || !"SM-F966Z".equals(Build.MODEL))
-            throw new IllegalStateException("This setup is limited to ADB shell on the tested SM-F966Z");
+            throw new IllegalStateException("此工具仅支持通过 ADB 在已验证的 SM-F966Z 上运行");
         Looper.prepareMainLooper();
         Class<?> at = Class.forName("android.app.ActivityThread");
         Object thread = at.getMethod("systemMain").invoke(null);
@@ -45,15 +45,15 @@ public final class CoverWallpaperSetup {
                 "com.android.systemui.wallpapers.ImageWallpaper".equals(info.getComponent().getClassName()));
         boolean live = info != null && LIVE.equals(info.getComponent())
                 && angleVideo((Bundle) getExtras.invoke(manager, COVER_HOME, 0));
-        System.out.println("Cover home: " + (live ? "angle-aware stock video" : stock ? "original stock image" : "other wallpaper"));
+        System.out.println("外屏桌面：" + (live ? "可读取角度的原生交互视频" : stock ? "原生静态壁纸" : "其他壁纸"));
         if (action.equals("status")) return;
-        if ((!stock && !live)) throw new IllegalStateException("Wallpaper changed since setup; refusing to overwrite it");
+        if ((!stock && !live)) throw new IllegalStateException("当前壁纸与预期不符，未覆盖原壁纸");
         if (action.equals("apply") && live || action.equals("restore-stock") && stock) {
-            System.out.println("Already configured; no change made"); return;
+            System.out.println("已完成设置，无需更改"); return;
         }
         Context resources = context.createPackageContext(RESOURCE_PACKAGE, 0);
         int id = resources.getResources().getIdentifier("sub_wallpaper_002", "drawable", RESOURCE_PACKAGE);
-        if (id == 0) throw new IllegalStateException("Original stock image unavailable; no change made");
+        if (id == 0) throw new IllegalStateException("未找到原生静态壁纸，没有进行更改");
         byte[] bytes;
         try (InputStream input = resources.getResources().openRawResource(id)) { bytes = input.readAllBytes(); }
         IBinder binder = (IBinder) Class.forName("android.os.ServiceManager").getMethod("getService", String.class)
@@ -65,26 +65,26 @@ public final class CoverWallpaperSetup {
         // Call the existing setter directly so unrelated wallpaper history is retained.
         if (action.equals("apply")) {
             Bundle inner = (Bundle) getExtras.invoke(manager, 5, 0);
-            if (!angleVideo(inner)) throw new IllegalStateException("Expected inner angle-aware wallpaper unavailable");
+            if (!angleVideo(inner)) throw new IllegalStateException("内屏未使用所需的原生折叠交互壁纸");
             WallpaperDescription.Builder builder = new WallpaperDescription.Builder();
             builder.getClass().getMethod("setComponent", ComponentName.class).invoke(builder, LIVE);
             Method setter = null;
             for (Method method : api.getMethods())
                 if (method.getName().equals("setWallpaperComponentChecked") && method.getParameterCount() == 5) setter = method;
-            if (setter == null) throw new IllegalStateException("Expected wallpaper setter unavailable");
+            if (setter == null) throw new IllegalStateException("系统未提供预期的壁纸设置接口");
             setter.invoke(remote, builder.build(), context.getPackageName(), COVER_HOME, 0, inner);
-            System.out.println("Applied angle-aware stock video to front HOME only");
+            System.out.println("仅为外屏桌面应用了可读取角度的原生交互视频");
         } else {
             Method setter = null;
             for (Method method : api.getMethods())
                 if (method.getName().equals("setWallpaper") && method.getParameterCount() == 11) setter = method;
-            if (setter == null) throw new IllegalStateException("Expected wallpaper restore setter unavailable");
+            if (setter == null) throw new IllegalStateException("系统未提供预期的壁纸恢复接口");
             Bundle extras = new Bundle(); extras.putString("uri", STOCK_URI); extras.putBoolean("isPreloaded", true);
             ParcelFileDescriptor file = (ParcelFileDescriptor) setter.invoke(remote, null, context.getPackageName(),
                     new WallpaperDescription.Builder().build(), false, new Bundle(), COVER_HOME, null, 0, 0, true, extras);
-            if (file == null) throw new IllegalStateException("Wallpaper restore did not return a writable file");
+            if (file == null) throw new IllegalStateException("壁纸恢复接口未返回可写入的文件");
             try (OutputStream output = new ParcelFileDescriptor.AutoCloseOutputStream(file)) { output.write(bytes); }
-            System.out.println("Restored original stock image to front HOME only");
+            System.out.println("仅为外屏桌面恢复了原生静态壁纸");
         }
         SystemClock.sleep(1000);
     }

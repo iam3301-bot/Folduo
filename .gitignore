@@ -11,6 +11,7 @@ local.properties
 .env.*
 .DS_Store
 .idea/
+.local-signing/
 *.iml
 captures/
 *.apk

@@ -40,6 +40,7 @@ public class LanguageTest {
     }
     private void select(int index,String language)throws Exception{
         screen.onActivity(a->{
+            a.findViewById(R.id.nav_settings).performClick();
             a.findViewById(R.id.language_button).performClick();
             for(View root:WindowInspector.getGlobalWindowViews()){
                 ListView list=find(root,ListView.class);

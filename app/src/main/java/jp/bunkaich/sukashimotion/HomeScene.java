@@ -86,15 +86,15 @@ final class HomeScene extends FrameLayout {
         List<AppCatalog.App> apps=List.of();
         HomePage(Context c,boolean interactive){
             super(c);this.interactive=interactive;
-            clock=text(c,"",34,0xfff9f5ed);clock.setTypeface(Typeface.create("sans-serif-light",Typeface.NORMAL));
-            date=text(c,"",38,0xff33465a);date.setTypeface(Typeface.create("sans-serif-light",Typeface.NORMAL));
-            clockCaption=text(c,c.getString(R.string.home_time),11,0xffdee9ef);dateCaption=text(c,"",11,0xff546070);
-            clock.setBackground(round(0x3a14324c,dp(24)));date.setBackground(round(0xd9f8f0e2,dp(24)));
+            clock=text(c,"",34,GlassStyle.INK);clock.setTypeface(Typeface.create("sans-serif-light",Typeface.NORMAL));
+            date=text(c,"",38,GlassStyle.INK);date.setTypeface(Typeface.create("sans-serif-light",Typeface.NORMAL));
+            clockCaption=text(c,c.getString(R.string.home_time),11,GlassStyle.SECONDARY);dateCaption=text(c,"",11,GlassStyle.SECONDARY);
+            GlassStyle.panel(clock,28);GlassStyle.panel(date,28);
             addView(clock);addView(date);addView(clockCaption);addView(dateCaption);
             for(int i=0;i<16;i++){
                 final int slot=i;LinearLayout tile=new LinearLayout(c);tile.setOrientation(LinearLayout.VERTICAL);tile.setGravity(Gravity.CENTER);
                 ImageView icon=new ImageView(c);icon.setScaleType(ImageView.ScaleType.FIT_CENTER);
-                TextView label=text(c,"",11,Color.WHITE);label.setMaxLines(1);label.setEllipsize(TextUtils.TruncateAt.END);label.setShadowLayer(dp(2),0,dp(1),0x66503d31);
+                TextView label=text(c,"",11,GlassStyle.INK);label.setMaxLines(1);label.setEllipsize(TextUtils.TruncateAt.END);
                 tile.addView(icon,new LinearLayout.LayoutParams(dp(52),dp(52)));LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(-1,dp(23));lp.topMargin=dp(5);tile.addView(label,lp);
                 icons[i]=icon;labels[i]=label;tiles[i]=tile;addView(tile);
                 if(interactive){
@@ -103,7 +103,7 @@ final class HomeScene extends FrameLayout {
                     tile.setOnLongClickListener(v->{actions.choose(slot);return true;});
                 }
             }
-            drawer=text(c,c.getString(R.string.home_all_apps),12,0xfff8f5ef);drawer.setBackground(round(0x481d334b,dp(24)));addView(drawer);
+            drawer=text(c,c.getString(R.string.home_all_apps),12,GlassStyle.INK);GlassStyle.panel(drawer,24);addView(drawer);
             if(interactive){drawer.setOnClickListener(v->actions.drawer());drawer.setFocusable(true);}
             else {setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS);setEnabled(false);}
             tick();
@@ -111,7 +111,7 @@ final class HomeScene extends FrameLayout {
         void updateApps(List<AppCatalog.App> list){apps=list;for(int i=0;i<16;i++){
             AppCatalog.App app=i<list.size()?list.get(i):null;
             icons[i].setImageDrawable(app==null?null:app.icon().getConstantState()!=null?app.icon().getConstantState().newDrawable():app.icon());
-            icons[i].setBackground(app==null?round(0x25ffffff,dp(16)):null);
+            icons[i].setBackground(app==null?round(0x99ffffff,dp(16)):null);
             labels[i].setText(app==null?getContext().getString(R.string.home_add):app.label());tiles[i].setContentDescription(getContext().getString(R.string.home_icon_description,app==null?getContext().getString(R.string.home_add_app):app.label()));
         }}
         void tick(){clock.setText(LocalTime.now().format(DateTimeFormatter.ofPattern("H:mm")));LocalDate d=LocalDate.now();date.setText(String.valueOf(d.getDayOfMonth()));dateCaption.setText(d.format(DateTimeFormatter.ofPattern(android.text.format.DateFormat.getBestDateTimePattern(getResources().getConfiguration().getLocales().get(0),"MMMEEE"),getResources().getConfiguration().getLocales().get(0))));}
@@ -136,12 +136,12 @@ final class HomeScene extends FrameLayout {
     final class TodayPage extends ViewGroup {
         final TextView title,largeClock,date,battery,note,edit;
         TodayPage(Context c){super(c);
-            title=text(c,c.getString(R.string.home_today),18,0xfff8f4ec);title.setGravity(Gravity.START|Gravity.CENTER_VERTICAL);
-            largeClock=text(c,"",62,Color.WHITE);largeClock.setGravity(Gravity.START|Gravity.CENTER_VERTICAL);largeClock.setTypeface(Typeface.create("sans-serif-thin",Typeface.NORMAL));
-            date=text(c,"",14,0xffe0e9ed);date.setGravity(Gravity.START|Gravity.CENTER_VERTICAL);
-            battery=text(c,"",20,0xff344658);battery.setBackground(round(0xddf8f0e2,dp(24)));
-            note=text(c,"",17,0xff344658);note.setGravity(Gravity.TOP|Gravity.START);note.setPadding(dp(22),dp(22),dp(22),dp(22));note.setMaxLines(6);note.setEllipsize(TextUtils.TruncateAt.END);note.setBackground(round(0xcff8f0e2,dp(24)));note.setOnClickListener(v->actions.note());
-            edit=text(c,c.getString(R.string.home_edit_note),12,0xffedf2f4);edit.setOnClickListener(v->actions.note());
+            title=text(c,c.getString(R.string.home_today),18,GlassStyle.INK);title.setGravity(Gravity.START|Gravity.CENTER_VERTICAL);
+            largeClock=text(c,"",62,GlassStyle.INK);largeClock.setGravity(Gravity.START|Gravity.CENTER_VERTICAL);largeClock.setTypeface(Typeface.create("sans-serif-thin",Typeface.NORMAL));
+            date=text(c,"",14,GlassStyle.SECONDARY);date.setGravity(Gravity.START|Gravity.CENTER_VERTICAL);
+            battery=text(c,"",20,GlassStyle.INK);GlassStyle.panel(battery,28);
+            note=text(c,"",17,GlassStyle.INK);note.setGravity(Gravity.TOP|Gravity.START);note.setPadding(dp(22),dp(22),dp(22),dp(22));note.setMaxLines(6);note.setEllipsize(TextUtils.TruncateAt.END);GlassStyle.panel(note,28);note.setOnClickListener(v->actions.note());
+            edit=text(c,c.getString(R.string.home_edit_note),12,GlassStyle.SECONDARY);edit.setOnClickListener(v->actions.note());
             for(View v:new View[]{title,largeClock,date,battery,note,edit})addView(v);
         }
         void tick(int level,String saved){largeClock.setText(LocalTime.now().format(DateTimeFormatter.ofPattern("H:mm")));date.setText(LocalDate.now().format(DateTimeFormatter.ofPattern(android.text.format.DateFormat.getBestDateTimePattern(getResources().getConfiguration().getLocales().get(0),"MMMddEEE"),getResources().getConfiguration().getLocales().get(0))));battery.setText(getContext().getString(R.string.home_battery,level<0?"—":level+"%"));note.setText(saved.isBlank()?getContext().getString(R.string.home_note_empty):saved);}
@@ -158,23 +158,7 @@ final class HomeScene extends FrameLayout {
     }
     static int exact(int n){return MeasureSpec.makeMeasureSpec(Math.max(0,n),MeasureSpec.EXACTLY);}
     static final class Wallpaper extends View {
-        final Paint paint=new Paint(3);final Path path=new Path();boolean inner,reverse;
-        LinearGradient sky,dune,foreground,veil;float cachedFull=-1,cachedHeight=-1;
-        Wallpaper(Context c){super(c);setImportantForAccessibility(IMPORTANT_FOR_ACCESSIBILITY_NO);}
-        @Override protected void onDraw(Canvas c){
-            float h=getHeight(),full=inner?getWidth():getWidth()*2f; c.save();if(!inner&&!reverse)c.translate(-getWidth(),0);
-            if(cachedFull!=full||cachedHeight!=h){rebuildGradients(full,h);}
-            paint.setShader(sky);c.drawRect(0,0,full,h,paint);
-            path.reset();path.moveTo(-full*.3f,h*.88f);path.cubicTo(full*.18f,h*.18f,full*.38f,h*1.05f,full*1.15f,h*.38f);path.lineTo(full*1.2f,h*1.1f);path.lineTo(-full*.3f,h*1.1f);path.close();
-            paint.setShader(dune);c.drawPath(path,paint);
-            path.reset();path.moveTo(-full*.2f,h*.97f);path.cubicTo(full*.4f,h*.62f,full*.66f,h*1.05f,full*1.1f,h*.65f);path.lineTo(full*1.1f,h*1.2f);path.lineTo(-full*.2f,h*1.2f);path.close();paint.setShader(foreground);c.drawPath(path,paint);
-            paint.setShader(veil);c.drawRect(0,0,full,h,paint);paint.setShader(null);c.restore();
-        }
-        void rebuildGradients(float full,float h){cachedFull=full;cachedHeight=h;
-            sky=new LinearGradient(0,0,full,h,new int[]{0xff18344c,0xff6e94a7,0xffd2b99f,0xff9a725a},new float[]{0,.42f,.75f,1},Shader.TileMode.CLAMP);
-            dune=new LinearGradient(0,h*.45f,full,h,new int[]{0xffecd9b9,0xffa58870,0xff413d40},null,Shader.TileMode.CLAMP);
-            foreground=new LinearGradient(0,h*.6f,0,h,0xffa88164,0xff624c43,Shader.TileMode.CLAMP);
-            veil=new LinearGradient(0,0,0,h,new int[]{0x18000000,0x00000000,0x32000000},null,Shader.TileMode.CLAMP);
-        }
+        boolean inner,reverse;
+        Wallpaper(Context c){super(c);setImportantForAccessibility(IMPORTANT_FOR_ACCESSIBILITY_NO);GlassStyle.backdrop(this);}
     }
 }

@@ -24,6 +24,7 @@ public final class HomeActivity extends Activity implements HomeScene.Actions {
 
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
+        GlassStyle.configureWindow(this);
         prefs = getSharedPreferences("launcher", MODE_PRIVATE);
         BridgeConnection.init(this);
         getWindow().setDecorFitsSystemWindows(false);
@@ -32,12 +33,10 @@ public final class HomeActivity extends Activity implements HomeScene.Actions {
         FrameLayout root = new FrameLayout(this);
         scene = new HomeScene(this, this);
         root.addView(scene, new FrameLayout.LayoutParams(-1, -1));
-        Button settings = new Button(this);
-        settings.setText(R.string.app_name);
+        Button settings = GlassStyle.button(this, getString(R.string.nav_settings), false, this::settings);
         settings.setAllCaps(false);
         settings.setContentDescription(getString(R.string.nav_settings));
-        settings.setTextColor(Color.WHITE);
-        settings.setBackground(HomeScene.round(0x551d334b, dp(24)));
+        settings.setTextColor(GlassStyle.INK);
         settings.setOnClickListener(v -> settings());
         FrameLayout.LayoutParams button = new FrameLayout.LayoutParams(dp(92), dp(48), Gravity.BOTTOM | Gravity.END);
         button.setMargins(dp(16), 0, dp(16), dp(16));
@@ -163,13 +162,13 @@ public final class HomeActivity extends Activity implements HomeScene.Actions {
             if (slot < 0) launch(app);
             else { prefs.edit().putString("slot_" + slot, app.component().flattenToString()).apply(); scene.updateApps(AppCatalog.favorites(apps, prefs)); }
         });
-        drawer.show(); drawer.getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_HIDDEN);
+        GlassStyle.dialog(drawer); drawer.getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_HIDDEN);
     }
     @Override public void note() {
         EditText entry = new EditText(this); entry.setText(prefs.getString("note", "")); entry.setHint(R.string.home_note_hint); entry.setMinLines(4);
-        new AlertDialog.Builder(this).setTitle(R.string.home_note_title).setView(entry).setPositiveButton(R.string.home_save, (d,w) -> {
+        GlassStyle.dialog(new AlertDialog.Builder(this).setTitle(R.string.home_note_title).setView(entry).setPositiveButton(R.string.home_save, (d,w) -> {
             prefs.edit().putString("note", entry.getText().toString()).apply(); main.removeCallbacks(clock); main.post(clock);
-        }).setNegativeButton(R.string.close, null).show();
+        }).setNegativeButton(R.string.close, null).create());
     }
     private int dp(float value) { return Math.round(value * getResources().getDisplayMetrics().density); }
 }

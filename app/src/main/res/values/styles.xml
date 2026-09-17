@@ -1,1 +1,13 @@
-<resources><style name="AppTheme" parent="android:style/Theme.Material.NoActionBar"><item name="android:fontFamily">sans</item><item name="android:colorAccent">#b3eed4</item><item name="android:windowLightStatusBar">false</item><item name="android:windowActionModeOverlay">true</item><item name="android:windowBackground">#101714</item><item name="android:windowLayoutInDisplayCutoutMode">always</item></style></resources>
+<resources>
+    <style name="AppTheme" parent="android:style/Theme.Material.Light.NoActionBar">
+        <item name="android:fontFamily">sans-serif</item>
+        <item name="android:colorAccent">#0866CE</item>
+        <item name="android:windowLightStatusBar">true</item>
+        <item name="android:windowLightNavigationBar">true</item>
+        <item name="android:windowActionModeOverlay">true</item>
+        <item name="android:windowBackground">#EDF4FB</item>
+        <item name="android:windowLayoutInDisplayCutoutMode">always</item>
+        <item name="android:windowSplashScreenBackground">#EDF4FB</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@drawable/ic_motion</item>
+    </style>
+</resources>
