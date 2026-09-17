@@ -18,4 +18,5 @@ captures/
 *.aab
 *.log
 tools/cover-wallpaper-setup.jar
+tools/fold8-wallpaper-setup.jar
 __pycache__/

@@ -203,7 +203,7 @@
     <string name="device_verified">Upstream tested this model on One UI 8.5. Physical validation on One UI 9.0 is pending.</string>
     <string name="device_preview_only">Display control is unavailable on this model. Home and animation previews are available.</string>
     <string name="wallpaper_title">Interactive wallpaper</string>
-    <string name="wallpaper_body">Fine angles can come from sensors or Samsung interactive wallpaper. Fold8 Ultra requires device-side inspection; do not apply Fold7 wallpaper assumptions.</string>
+    <string name="wallpaper_body">Continuous angles come from Samsung interactive wallpaper. Configure the matching home-screen resources on both displays using the guide; lock-screen wallpapers can remain unchanged. Switching to ordinary wallpaper disables continuous fold transitions.</string>
     <string name="read_setup">Read the Chinese setup guide</string>
     <string name="setup_step_1">Step 1 · Connect the helper</string>
     <string name="setup_step_2">Step 2 · Allow overlays</string>
@@ -224,5 +224,6 @@
     <string name="fold_illustration">A half-open phone with two translucent panels connected by a hinge</string>
     <string name="about_title">About Folduo</string>
     <string name="about_body">A Chinese edition of the open-source Folduo project. Native Android materials inspired by liquid glass.</string>
-    <string name="device_fold8">SM-F9760 is eligible for capability checks. Concurrent displays, fine angles and physical transitions still require testing on this One UI 9.0 phone.</string>
+    <string name="device_fold8">Continuous angles and three physical fold cycles were checked on SM-F9760 with One UI 9.0. Configure Samsung interactive wallpaper, then start Shizuku and the animation.</string>
+    <string name="quick_manage">Animation settings</string>
 </resources>

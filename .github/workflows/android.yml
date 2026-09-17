@@ -27,6 +27,8 @@ jobs:
         run: python3 tools/check-chinese.py
       - name: 构建与检查
         run: ./gradlew :app:assembleDebug :app:testDebugUnitTest :app:lintRelease
+      - name: 构建 Fold8 壁纸工具
+        run: python3 tools/build-fold8-wallpaper-helper.py
       - uses: actions/upload-artifact@v4
         with:
           name: Folduo-Chinese-debug

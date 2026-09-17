@@ -203,7 +203,7 @@
     <string name="device_verified">上游已在此型号的 One UI 8.5 上验证。One UI 9.0 的折叠控制仍待真机测试。</string>
     <string name="device_preview_only">当前型号未在双屏控制支持列表中；可使用中文界面、桌面与效果预览。</string>
     <string name="wallpaper_title">准备交互壁纸</string>
-    <string name="wallpaper_body">已检测到本机的三星交互壁纸组件。当前实测中，普通角度传感器仅返回三个位置；连续动画可能需要换用交互壁纸。查看指南后再决定是否更换。</string>
+    <string name="wallpaper_body">连续角度来自三星交互壁纸。请按中文指南配置内外屏桌面的对应资源，锁屏可保留原样。更换普通壁纸后，连续折叠动画将无法正常工作。</string>
     <string name="read_setup">查看中文安装指南</string>
     <string name="setup_step_1">第一步 · 连接辅助服务</string>
     <string name="setup_step_2">第二步 · 允许悬浮显示</string>
@@ -224,5 +224,6 @@
     <string name="fold_illustration">半展开的折叠手机，两个通透屏幕通过铰链连接</string>
     <string name="about_title">关于折叠流光</string>
     <string name="about_body">基于开源项目 Folduo 的中文版本。界面参考液态玻璃的材质与层次，在 Android 原生界面中实现。</string>
-    <string name="device_fold8">已在 SM-F9760／One UI 9.0 验证中文界面与辅助服务连接。连续动画依赖精细角度来源，真实开合效果仍待验证。</string>
+    <string name="device_fold8">已在 SM-F9760／One UI 9.0 完成连续角度与三轮开合检查。请先配置三星交互壁纸，再启动 Shizuku 和动画。</string>
+    <string name="quick_manage">动画设置</string>
 </resources>

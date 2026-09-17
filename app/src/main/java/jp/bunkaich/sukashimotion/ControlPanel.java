@@ -92,7 +92,7 @@ final class ControlPanel {
         illustration.setContentDescription(s(R.string.fold_illustration));page.addView(illustration,new LinearLayout.LayoutParams(-1,dp(194)));
         LinearLayout status=card();heading(status,R.string.motion_status);
         state=text(status,"",14,GlassStyle.SECONDARY,6);
-        button(status,R.string.quick_start,true,()->show(2));
+        button(status,MotionSettings.enabled(activity)?R.string.quick_manage:R.string.quick_start,true,()->show(2));
         LinearLayout preview=card();heading(preview,R.string.preview);
         text(preview,s(R.string.preview_hint),14,GlassStyle.SECONDARY,2);
         button(preview,R.string.preview,false,()->activity.startActivity(new Intent(activity,PreviewActivity.class)));

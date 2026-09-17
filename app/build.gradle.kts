@@ -19,8 +19,8 @@ android {
   applicationId = "io.github.iam3301.folduo"
   minSdk = 33
   targetSdk = 36
-  versionCode = 43
-  versionName = "0.2.0-zh-glass"
+  versionCode = 44
+  versionName = "0.2.1-zh-glass"
   testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
  }
  buildFeatures { buildConfig = true; aidl = true }

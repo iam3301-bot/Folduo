@@ -202,7 +202,7 @@
     <string name="device_verified">この機種は上流で One UI 8.5 の検証済みです。One UI 9.0 の実機検証は未実施です。</string>
     <string name="device_preview_only">この機種は画面制御の対象外です。ホームと演出プレビューを使用できます。</string>
     <string name="wallpaper_title">インタラクティブ壁紙</string>
-    <string name="wallpaper_body">細かな角度はセンサーや Samsung の壁紙から取得します。Fold8 Ultra は実機での確認が必要です。Fold7 の壁紙設定をそのまま適用しないでください。</string>
+    <string name="wallpaper_body">連続した角度は Samsung のインタラクティブ壁紙から取得します。ガイドに従い、内外両方のホーム画面を設定してください。ロック画面は変更不要です。通常の壁紙に戻すと連続した開閉アニメーションは動作しません。</string>
     <string name="read_setup">中国語の設定ガイド</string>
     <string name="setup_step_1">手順 1 · 補助サービスに接続</string>
     <string name="setup_step_2">手順 2 · 重ねて表示を許可</string>
@@ -223,6 +223,7 @@
     <string name="fold_illustration">半開きのスマートフォン。ヒンジでつながる透明な二つの画面</string>
     <string name="about_title">Folduo について</string>
     <string name="about_body">オープンソース Folduo の中国語版。ガラスの質感を参考にした Android ネイティブのデザインです。</string>
-    <string name="device_fold8">SM-F9760 の機能確認に対応しています。双画面、細かな角度、開閉動作は One UI 9.0 の実機で検証が必要です。</string>
+    <string name="device_fold8">SM-F9760／One UI 9.0 で連続した角度と実機での開閉３往復を確認しました。Samsung のインタラクティブ壁紙を設定し、Shizuku とアニメーションを起動してください。</string>
     <string name="app_name">Folduo</string>
+    <string name="quick_manage">アニメーション設定</string>
 </resources>
