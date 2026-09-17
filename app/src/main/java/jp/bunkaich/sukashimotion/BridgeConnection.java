@@ -10,30 +10,91 @@ final class BridgeConnection {
     static volatile UiText status=UiText.of(R.string.bridge_waiting);
     static final ExecutorService work=Executors.newSingleThreadExecutor();
     private static final ScheduledExecutorService pulse=Executors.newSingleThreadScheduledExecutor();
-    private static volatile boolean binding;private static boolean initialized;
-    private static long bindingAt,nextAttempt;private static int failures;
+    private static final Handler main=new Handler(Looper.getMainLooper());
+    private static final BridgeRecovery recovery=new BridgeRecovery();
+    private static boolean initialized;
     private static Shizuku.UserServiceArgs args;
-    private static final ServiceConnection connection=new ServiceConnection(){
-        public void onServiceConnected(ComponentName name,IBinder binder){synchronized(BridgeConnection.class){bridge=IShellBridge.Stub.asInterface(binder);status=UiText.of(R.string.bridge_connected);binding=false;failures=0;nextAttempt=0;}}
-        public void onServiceDisconnected(ComponentName name){synchronized(BridgeConnection.class){bridge=null;status=UiText.of(R.string.bridge_reconnecting);binding=false;nextAttempt=0;}}
-    };
+    private static ServiceConnection connection;
+
     static synchronized void init(Context context){
         if(initialized)return;initialized=true;
         args=new Shizuku.UserServiceArgs(new ComponentName(context,ShellBridge.class)).daemon(false).processNameSuffix("motion_bridge").debuggable(BuildConfig.DEBUG).version(BuildConfig.VERSION_CODE);
-        Shizuku.addBinderDeadListener(()->{synchronized(BridgeConnection.class){bridge=null;binding=false;nextAttempt=0;status=UiText.of(R.string.bridge_start_shizuku);}});
-        pulse.scheduleWithFixedDelay(()->{IShellBridge b=bridge;if(b!=null)try{b.heartbeat();}catch(Exception e){synchronized(BridgeConnection.class){if(bridge==b){bridge=null;binding=false;status=UiText.of(R.string.bridge_reconnecting);}}}},0,1,TimeUnit.SECONDS);
+        Shizuku.addBinderDeadListener(()->{synchronized(BridgeConnection.class){bridge=null;recovery.lost();status=UiText.of(R.string.bridge_start_shizuku);}});
+        pulse.scheduleWithFixedDelay(()->{IShellBridge b=bridge;if(b!=null)try{b.heartbeat();}catch(Exception e){synchronized(BridgeConnection.class){if(bridge==b){bridge=null;recovery.lost();status=UiText.of(R.string.bridge_reconnecting);}}}},0,1,TimeUnit.SECONDS);
     }
     static boolean permitted(){try{return Shizuku.pingBinder()&&Shizuku.checkSelfPermission()==0;}catch(Exception e){return false;}}
     static synchronized void connect(Context context){
-        init(context);if(bridge!=null)return;long now=SystemClock.elapsedRealtime();
-        if(binding&&now-bindingAt<10000)return;
-        if(binding){try{Shizuku.unbindUserService(args,connection,false);}catch(Exception ignored){}binding=false;}
-        if(now<nextAttempt)return;
-        nextAttempt=now+Math.min(15000,1000L<<Math.min(failures++,4));
-        if(!permitted()){status=UiText.of(R.string.bridge_permission);return;}
-        try{binding=true;bindingAt=now;status=UiText.of(R.string.bridge_connecting);Shizuku.bindUserService(args,connection);}catch(Exception e){binding=false;status=UiText.error(e);}
+        init(context);if(bridge!=null)return;
+        boolean permitted=permitted();
+        BridgeRecovery.Attempt attempt=recovery.poll(SystemClock.elapsedRealtime(),permitted);
+        if(!permitted)status=UiText.of(R.string.bridge_permission);
+        if(attempt==null)return;
+        status=UiText.of(R.string.bridge_connecting);
+        ServiceConnection previous=connection;
+        ServiceConnection next=new ServiceConnection(){
+            @Override public void onServiceConnected(ComponentName name,IBinder binder){
+                synchronized(BridgeConnection.class){
+                    if(!recovery.current(attempt.id()))return;
+                    if(binder==null||!binder.isBinderAlive()){
+                        recovery.failed(attempt.id());status=UiText.of(R.string.bridge_reconnecting);return;
+                    }
+                    recovery.connected(attempt.id());bridge=IShellBridge.Stub.asInterface(binder);status=UiText.of(R.string.bridge_connected);
+                    android.util.Log.i("FolduoBridge","Helper connected");
+                }
+            }
+            @Override public void onServiceDisconnected(ComponentName name){
+                synchronized(BridgeConnection.class){
+                    if(!recovery.current(attempt.id()))return;
+                    bridge=null;recovery.lost();status=UiText.of(R.string.bridge_reconnecting);
+                }
+            }
+        };
+        connection=next;Context application=context.getApplicationContext();
+        // Shizuku's SDK callback collections are also read on the main thread.
+        // Keep unbind/bind ordered there, including stop followed by an immediate restart.
+        main.post(()->{
+            synchronized(BridgeConnection.class){
+                if(!recovery.current(attempt.id()))return;
+                removeService(previous);
+                if(attempt.wakeManager()){
+                    android.util.Log.i("FolduoBridge","Helper connection timed out; requesting manager receiver");
+                    Intent wake=new Intent("rikka.shizuku.intent.action.REQUEST_BINDER")
+                        .setComponent(new ComponentName("moe.shizuku.privileged.api","moe.shizuku.manager.receiver.ShizukuReceiver"));
+                    try{
+                        // Explicitly starting the exported receiver recreates the manager's
+                        // provider before its helper must return a binder. No Activity or
+                        // INCLUDE_STOPPED_PACKAGES: a deliberately stopped manager stays stopped.
+                        application.sendOrderedBroadcast(wake,null,new BroadcastReceiver(){
+                            @Override public void onReceive(Context ignored,Intent intent){
+                                android.util.Log.i("FolduoBridge","Manager wake request finished; retrying helper");
+                                bind(attempt,next);
+                            }
+                        },main,0,null,null);
+                        return;
+                    }catch(RuntimeException ignored){/* Retry binding even if this manager lacks the receiver. */}
+                }
+                bind(attempt,next);
+            }
+        });
     }
-    static void disconnect(){
-        work.execute(()->{synchronized(BridgeConnection.class){try{if(args!=null)Shizuku.unbindUserService(args,connection,true);}catch(Exception ignored){}finally{bridge=null;binding=false;nextAttempt=0;failures=0;}}});
+
+    private static synchronized void bind(BridgeRecovery.Attempt attempt,ServiceConnection next){
+        if(!recovery.current(attempt.id()))return;
+        try{Shizuku.bindUserService(args,next);}
+        catch(Exception e){if(recovery.failed(attempt.id()))status=UiText.error(e);}
+    }
+
+    /** Remove this app's stale starting record, then the SDK's cached callback list. */
+    private static void removeService(ServiceConnection previous){
+        if(args==null||previous==null)return;
+        try{Shizuku.unbindUserService(args,previous,true);}catch(Exception ignored){}
+        try{Shizuku.unbindUserService(args,previous,false);}catch(Exception ignored){}
+    }
+
+    static synchronized void disconnect(){
+        recovery.stop();bridge=null;status=UiText.of(R.string.bridge_waiting);
+        ServiceConnection previous=connection;connection=null;
+        // Invalidate callbacks synchronously; queued cleanup precedes any later bind.
+        main.post(()->{synchronized(BridgeConnection.class){removeService(previous);}});
     }
 }

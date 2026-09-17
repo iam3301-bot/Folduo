@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="folder_description">文件夹“%1$s”，%2$d 个应用，长按整理</string>
+    <string name="folder_home_icon_description">%1$s，长按可建立文件夹或整理首页</string>
+    <string name="folder_default_name">文件夹</string>
+    <string name="folder_create">建立文件夹</string>
+    <string name="folder_create_title">选择至少两个应用</string>
+    <string name="folder_open">打开文件夹</string>
+    <string name="folder_rename">重命名</string>
+    <string name="folder_rename_description">%1$s，点按重命名文件夹</string>
+    <string name="folder_name_hint">文件夹名称</string>
+    <string name="folder_organize">整理应用</string>
+    <string name="folder_organize_title">选择文件夹中的应用</string>
+    <string name="folder_dissolve">解散文件夹</string>
+    <string name="folder_dissolved">文件夹已解散，应用已回到首页或后续应用页</string>
+    <string name="folder_replace_app">更换此位置的应用</string>
+    <string name="folder_remove_shortcut">从首页移除</string>
+    <string name="folder_count">%1$d 个应用 · 点按打开</string>
+    <string name="folder_slot">位置 %1$d · 加入“%2$s”文件夹</string>
+    <string name="folder_added">已将“%1$s”加入“%2$s”</string>
+</resources>

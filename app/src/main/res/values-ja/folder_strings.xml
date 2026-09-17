@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="folder_description">フォルダ「%1$s」、%2$d 個のアプリ。長押しで整理</string>
+    <string name="folder_home_icon_description">%1$s。長押しでフォルダを作成、ホームを整理</string>
+    <string name="folder_default_name">フォルダ</string>
+    <string name="folder_create">フォルダを作成</string>
+    <string name="folder_create_title">アプリを2個以上選択</string>
+    <string name="folder_open">フォルダを開く</string>
+    <string name="folder_rename">名前を変更</string>
+    <string name="folder_rename_description">%1$s。タップしてフォルダ名を変更</string>
+    <string name="folder_name_hint">フォルダ名</string>
+    <string name="folder_organize">アプリを整理</string>
+    <string name="folder_organize_title">フォルダ内のアプリを選択</string>
+    <string name="folder_dissolve">フォルダを解除</string>
+    <string name="folder_dissolved">フォルダを解除しました。アプリはホームまたは後続ページにあります</string>
+    <string name="folder_replace_app">この位置のアプリを変更</string>
+    <string name="folder_remove_shortcut">ホームから削除</string>
+    <string name="folder_count">%1$d 個のアプリ · タップして開く</string>
+    <string name="folder_slot">位置 %1$d · 「%2$s」に追加</string>
+    <string name="folder_added">「%1$s」を「%2$s」に追加しました</string>
+</resources>

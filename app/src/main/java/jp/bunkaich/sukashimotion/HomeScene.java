@@ -13,7 +13,7 @@ import java.util.*;
 
 /** One cover page, retained on the right when unfolded. The left reveals a second page. */
 final class HomeScene extends FrameLayout {
-    interface Actions { void launch(AppCatalog.App app); void choose(int slot); void drawer(); void settings(); void note(); default void pin(AppCatalog.App app) {} default void appearance() {} }
+    interface Actions { void launch(AppCatalog.App app); void choose(int slot); void drawer(); void settings(); void note(); default void pin(AppCatalog.App app) {} default void appearance() {} default void edit(int slot) { choose(slot); } default void folder(int slot) {} }
     private final Actions actions;
     final HomePage primary;
     final TodayPage today;
@@ -24,6 +24,7 @@ final class HomeScene extends FrameLayout {
     String lastTickKey="";
     private float startX,startY;
     private List<AppCatalog.App> catalog=List.of(),favorites=List.of(),remaining=List.of();
+    private Map<Integer,HomeFolders.Folder> folders=Map.of();
     private int page;
     HomeScene(Context context, Actions actions) {
         super(context); this.actions=actions;
@@ -36,8 +37,10 @@ final class HomeScene extends FrameLayout {
     int dp(float value){return Math.round(value*getResources().getDisplayMetrics().density);}
     void setCatalog(List<AppCatalog.App> apps){catalog=new ArrayList<>(apps);rebuildPages();}
     void updateApps(List<AppCatalog.App> apps){favorites=new ArrayList<>(apps);rebuildPages();}
+    void updateFolders(Map<Integer,HomeFolders.Folder> saved){folders=new LinkedHashMap<>(saved);rebuildPages();}
     private void rebuildPages(){
         HashSet<String> used=new HashSet<>();for(AppCatalog.App app:favorites)if(app!=null)used.add(app.component().flattenToString());
+        for(HomeFolders.Folder folder:folders.values())used.addAll(folder.components());
         remaining=new ArrayList<>();for(AppCatalog.App app:catalog)if(used.add(app.component().flattenToString()))remaining.add(app);
         showPage(Math.min(page,pageCount()-1));
     }
@@ -56,7 +59,7 @@ final class HomeScene extends FrameLayout {
         for(TextView text:primary.labels)text.setTextColor(HomeTheme.ink(c));
         for(TextView text:new TextView[]{primary.clockCaption,primary.dateCaption,primary.pageIndicator,primary.appearance,today.date,today.edit})text.setTextColor(HomeTheme.secondary(c));
         for(View view:new View[]{primary.clock,primary.date,today.battery,today.note})HomeTheme.panel(view,28);
-        HomeTheme.panel(primary.drawer,24);invalidate();
+        HomeTheme.panel(primary.drawer,24);primary.updateApps(primary.apps);invalidate();
     }
     void tick(int battery,String note){
         String key=LocalDate.now()+" "+LocalTime.now().getHour()+":"+LocalTime.now().getMinute()+"/"+battery+"/"+note;
@@ -132,8 +135,8 @@ final class HomeScene extends FrameLayout {
                 icons[i]=icon;labels[i]=label;tiles[i]=tile;addView(tile);
                 if(interactive){
                     tile.setFocusable(true);tile.setClickable(true);tile.setBackground(round(0x00000000,dp(18)));
-                    tile.setOnClickListener(v->{if(apps.size()>slot&&apps.get(slot)!=null)actions.launch(apps.get(slot));else if(page==0)actions.choose(slot);});
-                    tile.setOnLongClickListener(v->{if(page==0)actions.choose(slot);else if(apps.size()>slot&&apps.get(slot)!=null)actions.pin(apps.get(slot));return true;});
+                    tile.setOnClickListener(v->{if(page==0&&folders.containsKey(slot))actions.folder(slot);else if(apps.size()>slot&&apps.get(slot)!=null)actions.launch(apps.get(slot));else if(page==0)actions.choose(slot);});
+                    tile.setOnLongClickListener(v->{if(page==0)actions.edit(slot);else if(apps.size()>slot&&apps.get(slot)!=null)actions.pin(apps.get(slot));return true;});
                 }
             }
             appearance=text(c,c.getString(R.string.home_theme_title),12,HomeTheme.secondary(c));appearance.setOnClickListener(v->actions.appearance());appearance.setFocusable(true);addView(appearance);
@@ -145,10 +148,15 @@ final class HomeScene extends FrameLayout {
         }
         void updateApps(List<AppCatalog.App> list){apps=list;for(int i=0;i<16;i++){
             AppCatalog.App app=i<list.size()?list.get(i):null;
+            HomeFolders.Folder folder=page==0?folders.get(i):null;
+            if(folder!=null){
+                tiles[i].setVisibility(VISIBLE);icons[i].setBackground(null);icons[i].setImageDrawable(new FolderIcon(folder.apps(catalog),HomeTheme.palette(getContext())==1?0xff566273:0xcce8eef7));
+                labels[i].setText(folder.name());tiles[i].setContentDescription(getContext().getString(R.string.folder_description,folder.name(),folder.apps(catalog).size()));continue;
+            }
             tiles[i].setVisibility(page>0&&app==null?INVISIBLE:VISIBLE);
             icons[i].setImageDrawable(app==null?null:app.icon().getConstantState()!=null?app.icon().getConstantState().newDrawable():app.icon());
             icons[i].setBackground(app==null?round(0x99ffffff,dp(16)):null);
-            labels[i].setText(app==null?getContext().getString(R.string.home_add):app.label());tiles[i].setContentDescription(getContext().getString(page==0?R.string.home_icon_description:R.string.home_page_pin_description,app==null?getContext().getString(R.string.home_add_app):app.label()));
+            labels[i].setText(app==null?getContext().getString(R.string.home_add):app.label());tiles[i].setContentDescription(getContext().getString(page==0?R.string.folder_home_icon_description:R.string.home_page_pin_description,app==null?getContext().getString(R.string.home_add_app):app.label()));
         }}
         void tick(){clock.setText(LocalTime.now().format(DateTimeFormatter.ofPattern("H:mm")));LocalDate d=LocalDate.now();date.setText(String.valueOf(d.getDayOfMonth()));dateCaption.setText(d.format(DateTimeFormatter.ofPattern(android.text.format.DateFormat.getBestDateTimePattern(getResources().getConfiguration().getLocales().get(0),"MMMEEE"),getResources().getConfiguration().getLocales().get(0))));}
         @Override protected void onMeasure(int ws,int hs){

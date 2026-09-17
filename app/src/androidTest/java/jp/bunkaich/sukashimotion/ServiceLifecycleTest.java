@@ -267,6 +267,19 @@ public class ServiceLifecycleTest {
   assertTrue(MotionSettings.enabled(context));BridgeConnection.bridge=bridge;
   new RestartReceiver().onReceive(context,new Intent(Intent.ACTION_MY_PACKAGE_REPLACED));waitFor(()->MotionService.running&&bridge.sink!=null);
  }
+ @Test public void returningHomeRestoresEnabledMonitorWithoutOpeningSettings()throws Exception{
+  context.stopService(new Intent(context,MotionService.class));waitFor(()->!MotionService.running);waitFor(()->bridge.sink==null);Thread.sleep(150);
+  assertTrue(MotionSettings.enabled(context));BridgeConnection.bridge=bridge;
+  Activity home=InstrumentationRegistry.getInstrumentation().startActivitySync(new Intent(context,HomeActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+  try{waitFor(()->MotionService.running&&bridge.sink!=null);assertTrue(MotionSettings.enabled(context));}
+  finally{InstrumentationRegistry.getInstrumentation().runOnMainSync(home::finish);}
+ }
+ @Test public void returningHomeKeepsAnExplicitlyStoppedMonitorStopped()throws Exception{
+  context.startService(new Intent(context,MotionService.class).setAction("stop"));waitFor(()->!MotionService.running);waitFor(()->bridge.sink==null);Thread.sleep(150);
+  Activity home=InstrumentationRegistry.getInstrumentation().startActivitySync(new Intent(context,HomeActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+  try{Thread.sleep(250);assertFalse(MotionSettings.enabled(context));assertFalse(MotionService.running);}
+  finally{InstrumentationRegistry.getInstrumentation().runOnMainSync(home::finish);}
+ }
  private void shell(String command)throws Exception{
   try(InputStream in=new ParcelFileDescriptor.AutoCloseInputStream(InstrumentationRegistry.getInstrumentation().getUiAutomation().executeShellCommand(command))){in.readAllBytes();}
  }

@@ -77,6 +77,30 @@ public class HomeInteractionTest {
             assertEquals(first.flattenToString(),prefs.getString("slot_5",null));
         }finally{prefs.edit().clear().commit();}
     }
+    @Test public void folderTapOpensItsGridAndMembersDoNotRepeatOnLaterPages(){
+        var instrumentation=InstrumentationRegistry.getInstrumentation();
+        instrumentation.runOnMainSync(()->{
+            Context context=instrumentation.getTargetContext();java.util.ArrayList<AppCatalog.App> apps=new java.util.ArrayList<>();
+            for(int i=0;i<35;i++)apps.add(new AppCatalog.App("应用"+i,new ComponentName("folder.scene"+i,"folder.scene"+i+".Main"),new ColorDrawable(0xff447799)));
+            java.util.ArrayList<AppCatalog.App> favorites=new java.util.ArrayList<>(apps.subList(0,16));favorites.set(0,null);favorites.set(2,null);
+            java.util.List<String> members=List.of(apps.get(0).component().flattenToString(),apps.get(2).component().flattenToString(),apps.get(18).component().flattenToString(),apps.get(19).component().flattenToString());
+            int[] opened={-1},edited={-1},launches={0};
+            HomeScene scene=new HomeScene(context,new HomeScene.Actions(){
+                public void launch(AppCatalog.App app){launches[0]++;} public void choose(int slot){fail("Long press must show the edit menu");}
+                public void drawer(){} public void settings(){} public void note(){} public void folder(int slot){opened[0]=slot;} public void edit(int slot){edited[0]=slot;}
+            });
+            scene.setCatalog(apps);scene.updateApps(favorites);scene.updateFolders(java.util.Map.of(0,new HomeFolders.Folder("test","工具",members)));
+            for(boolean inner:new boolean[]{false,true,false}){
+                layout(scene,inner);scene.primary.tiles[0].performClick();assertEquals(0,opened[0]);assertEquals(0,launches[0]);
+                scene.primary.tiles[0].performLongClick();assertEquals(0,edited[0]);assertEquals("工具",scene.primary.labels[0].getText().toString());
+            }
+            swipe(scene,-1);assertEquals(1,scene.currentPage());
+            for(AppCatalog.App app:scene.primary.apps)assertFalse(members.contains(app.component().flattenToString()));
+            assertEquals(apps.get(16),scene.primary.apps.get(0));assertEquals(apps.get(20),scene.primary.apps.get(2));
+            scene.updateFolders(java.util.Map.of());
+            assertTrue("Removed folder members become available on subsequent pages",scene.primary.apps.contains(apps.get(0)));
+        });
+    }
     private static void layout(HomeScene scene,boolean inner){
         int width=inner?1968:1080;scene.setFold(inner,0,false);
         scene.measure(View.MeasureSpec.makeMeasureSpec(width,View.MeasureSpec.EXACTLY),View.MeasureSpec.makeMeasureSpec(2184,View.MeasureSpec.EXACTLY));

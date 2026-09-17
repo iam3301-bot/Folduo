@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="folder_description">Folder %1$s, %2$d apps. Long-press to organize</string>
+    <string name="folder_home_icon_description">%1$s. Long-press to create a folder or organize Home</string>
+    <string name="folder_default_name">Folder</string>
+    <string name="folder_create">Create folder</string>
+    <string name="folder_create_title">Choose at least two apps</string>
+    <string name="folder_open">Open folder</string>
+    <string name="folder_rename">Rename</string>
+    <string name="folder_rename_description">%1$s. Tap to rename this folder</string>
+    <string name="folder_name_hint">Folder name</string>
+    <string name="folder_organize">Edit apps</string>
+    <string name="folder_organize_title">Choose apps for this folder</string>
+    <string name="folder_dissolve">Ungroup</string>
+    <string name="folder_dissolved">Folder removed. Apps are on Home or later app pages</string>
+    <string name="folder_replace_app">Replace this app</string>
+    <string name="folder_remove_shortcut">Remove from Home</string>
+    <string name="folder_count">%1$d apps · Tap to open</string>
+    <string name="folder_slot">Position %1$d · Add to %2$s folder</string>
+    <string name="folder_added">Added %1$s to %2$s</string>
+</resources>

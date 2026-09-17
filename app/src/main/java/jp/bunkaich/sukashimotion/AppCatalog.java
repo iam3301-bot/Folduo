@@ -27,6 +27,8 @@ final class AppCatalog {
     }
     static void pin(SharedPreferences prefs,ComponentName component,int slot){
         if(slot<0||slot>=16)throw new IllegalArgumentException("Invalid favorite slot");
+        if(HomeFolders.read(prefs).containsKey(slot)){HomeFolders.add(prefs,slot,component.flattenToString());return;}
+        HomeFolders.removeApp(prefs,component.flattenToString());
         String chosen=component.flattenToString(),displaced=prefs.getString("slot_"+slot,"");
         SharedPreferences.Editor edit=prefs.edit();boolean swapped=false;
         for(int other=0;other<16;other++)if(other!=slot&&chosen.equals(prefs.getString("slot_"+other,null))){
@@ -39,6 +41,7 @@ final class AppCatalog {
         // Stable slot ids, including gaps: uninstalling an app must not reorder the home screen.
         String[] preferred={"camera","chrome","gallery","calendar","messaging","gmail","maps","youtube","clock","settings","notes","calculator","photos","music","files","kotobamado"};
         HashSet<String> used=new HashSet<>();
+        for(HomeFolders.Folder folder:HomeFolders.read(prefs).values())used.addAll(folder.components());
         for(int slot=0;slot<16;slot++) {
             String saved=prefs.getString("slot_"+slot,null); App found=null;
             if(saved!=null) { for(App app:all)if(app.component.flattenToString().equals(saved)){found=app;break;} }
