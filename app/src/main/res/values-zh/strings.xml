@@ -224,6 +224,20 @@
     <string name="fold_illustration">半展开的折叠手机，两个通透屏幕通过铰链连接</string>
     <string name="about_title">关于折叠流光</string>
     <string name="about_body">基于开源项目 Folduo 的中文版本。界面参考液态玻璃的材质与层次，在 Android 原生界面中实现。</string>
-    <string name="device_fold8">已在 SM-F9760／One UI 9.0 完成连续角度与三轮开合检查。请先配置三星交互壁纸，再启动 Shizuku 和动画。</string>
+    <string name="device_fold8">面向 SM-F9760／One UI 9.0，按原项目方案使用流光桌面和双屏并行。需要 Shizuku、悬浮显示与三星交互壁纸；当前版本仍在真机验证。</string>
     <string name="quick_manage">动画设置</string>
+    <string name="native_controls_title">内屏导航</string>
+    <string name="native_controls_body">当前 SM-F9760 使用流光桌面与双屏并行方案。内屏提供轻量手势导航，不恢复三星通知面板或完整原生手势。</string>
+    <string name="native_overlay_body">用于在开合时显示过渡画面，并提供内屏导航。</string>
+    <string name="native_power_body">运行时两块屏幕保持点亮，耗电会增加。停止动画或锁屏后释放屏幕控制。请先停止其他折叠动画工具。</string>
+    <string name="native_start_message">请先将折叠流光设为默认桌面，再完全合上手机一次，完成初始化。</string>
+    <string name="native_recovery_body">通常会自动重连，也可在通知中轻触“恢复”。重启手机后请先启动 Shizuku；如果曾强行停止本应用，请在此页重新启用。</string>
+    <string name="fold8_setup_summary">先准备权限与交互壁纸，再将流光设为默认桌面，最后启用动画。</string>
+    <string name="fold8_wallpaper_step">第三步 · 准备交互壁纸</string>
+    <string name="fold8_home_step">第四步 · 设置流光桌面</string>
+    <string name="fold8_enable_step">第五步 · 启用折叠动画</string>
+    <string name="fold8_home_setup">本方案使用折叠流光作为默认桌面，优先实现连续开合动画。轻触“设为默认桌面”，在系统选择中选中折叠流光；长按桌面图标可更换应用。</string>
+    <string name="fold8_controls_title">内屏手势导航</string>
+    <string name="fold8_controls_body">内屏使用轻量手势导航，不显示原来的大胶囊导航条。外屏沿用三星导航；内屏不提供三星通知面板及完整原生手势。</string>
+    <string name="need_folduo_home">请先将「折叠流光」设为默认桌面，再启用动画。</string>
 </resources>

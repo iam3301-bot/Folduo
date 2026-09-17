@@ -17,9 +17,9 @@ final class SnapshotSurface extends SurfaceView implements SurfaceHolder.Callbac
         image.logicalWidth=getWidth();host.setView(image,getWidth(),getHeight());
         SurfaceControlViewHost.SurfacePackage surface=host.getSurfacePackage();
         if(surface!=null)setChildSurfacePackage(surface);
-        // GPU completion can precede attaching the embedded surface to its parent transaction.
-        // Keep the source app visible until both the child and the parent have been submitted.
-        image.afterFrame(()->post(()->postOnAnimation(()->postOnAnimation(committed))));
+        // Initial attachment also needs its parent window presented. Later texture/endpoint
+        // updates use image.afterFrame directly and keep this already-attached surface alive.
+        image.afterFrame(()->SnapshotView.afterSubmittedFrame(this,committed));
     }
     @Override public void surfaceChanged(SurfaceHolder holder,int format,int width,int height){
         if(host!=null){image.logicalWidth=width;host.relayout(width,height);}

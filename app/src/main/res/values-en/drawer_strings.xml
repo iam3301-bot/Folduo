@@ -1,0 +1,12 @@
+<resources>
+    <string name="drawer_loading">Loading apps…</string>
+    <string name="drawer_count">%1$d apps</string>
+    <string name="drawer_browse_hint">Scroll to browse every app. Touch and hold to pin to Home.</string>
+    <string name="drawer_choose_hint">Choose an app to replace Home position %1$d</string>
+    <string name="drawer_empty">No apps available</string>
+    <string name="drawer_no_results">No apps found. Try another name.</string>
+    <string name="drawer_pin_title">Pin “%1$s” to Home</string>
+    <string name="drawer_slot_occupied">Position %1$d · Currently: %2$s</string>
+    <string name="drawer_slot_empty">Position %1$d · Empty</string>
+    <string name="drawer_pinned">Pinned “%1$s” to Home position %2$d</string>
+</resources>

@@ -5,11 +5,17 @@ import java.util.function.BooleanSupplier;
 
 /** Built off the UI thread; textures stay immutable while the GPU uses them. */
 final class FrameTexture {
-    final Bitmap sharp;final Bitmap[] levels;final boolean prepared;
-    FrameTexture(Bitmap bitmap,Bitmap[] levels,boolean prepared){sharp=bitmap;this.levels=levels;this.prepared=prepared;}
+    enum SharpMapping { DIRECT, COVER_TO_INNER, INNER_RIGHT_TO_COVER }
+    final Bitmap sharp;final Bitmap[] levels;final boolean prepared;final SharpMapping sharpMapping;
+    FrameTexture(Bitmap bitmap,Bitmap[] levels,boolean prepared){this(bitmap,levels,prepared,SharpMapping.DIRECT);}
+    private FrameTexture(Bitmap bitmap,Bitmap[] levels,boolean prepared,SharpMapping mapping){sharp=bitmap;this.levels=levels;this.prepared=prepared;sharpMapping=mapping;}
     static FrameTexture sharp(Bitmap input){
         // Hardware bitmaps can be drawn directly; do not wait for CPU blur before covering a swap.
         input.prepareToDraw();Bitmap[] levels=new Bitmap[BlurCache.LEVELS.length];java.util.Arrays.fill(levels,input);return new FrameTexture(input,levels,false);
+    }
+    /** Reuse even a hardware bitmap immediately; SnapshotView maps it on the GPU. */
+    FrameTexture transferSharp(boolean sourceInner){
+        return new FrameTexture(sharp,levels,false,sourceInner?SharpMapping.INNER_RIGHT_TO_COVER:SharpMapping.COVER_TO_INNER);
     }
     static FrameTexture prepare(Bitmap input,float density,BooleanSupplier cancelled){
         Bitmap sharp=input.getConfig()==Bitmap.Config.HARDWARE?input.copy(Bitmap.Config.ARGB_8888,false):input;

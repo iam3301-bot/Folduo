@@ -223,7 +223,21 @@
     <string name="fold_illustration">半開きのスマートフォン。ヒンジでつながる透明な二つの画面</string>
     <string name="about_title">Folduo について</string>
     <string name="about_body">オープンソース Folduo の中国語版。ガラスの質感を参考にした Android ネイティブのデザインです。</string>
-    <string name="device_fold8">SM-F9760／One UI 9.0 で連続した角度と実機での開閉３往復を確認しました。Samsung のインタラクティブ壁紙を設定し、Shizuku とアニメーションを起動してください。</string>
+    <string name="device_fold8">SM-F9760／One UI 9.0 向けです。元のプロジェクトと同様に、Folduo ホームと両画面の同時表示を使用します。Shizuku、重ねて表示の権限、Samsung のインタラクティブ壁紙が必要です。実機での検証は継続中です。</string>
     <string name="app_name">Folduo</string>
     <string name="quick_manage">アニメーション設定</string>
+    <string name="native_controls_title">内側画面の操作</string>
+    <string name="native_controls_body">現在の SM-F9760 では Folduo ホームと両画面の同時表示を使用します。内側画面は小さなジェスチャー操作部を使い、Samsung の通知パネルや標準ジェスチャーのすべてには対応しません。</string>
+    <string name="native_overlay_body">開閉時の画面を重ねて表示し、内側画面の操作を提供します。</string>
+    <string name="native_power_body">動作中は両画面が点灯するため消費電力が増えます。演出を停止するか端末をロックすると、画面の制御を解除します。ほかの開閉演出ツールは先に停止してください。</string>
+    <string name="native_start_message">Folduo を既定のホームに設定し、一度完全に閉じて初期化してください。</string>
+    <string name="native_recovery_body">通常は自動的に再接続します。通知の「再開」でも復旧できます。端末を再起動したら Shizuku を起動してください。このアプリを強制停止した場合は、ここで再び有効にします。</string>
+    <string name="fold8_setup_summary">権限とインタラクティブ壁紙を準備し、Folduo を既定のホームにしてから演出を有効にします。</string>
+    <string name="fold8_wallpaper_step">手順 3 · インタラクティブ壁紙を準備</string>
+    <string name="fold8_home_step">手順 4 · Folduo ホームを設定</string>
+    <string name="fold8_enable_step">手順 5 · 開閉演出を有効にする</string>
+    <string name="fold8_home_setup">連続した開閉演出を優先するため、Folduo を既定のホームとして使用します。「既定のホームに設定」からシステムの選択画面で Folduo を選んでください。ホームのアイコンを長押しするとアプリを変更できます。</string>
+    <string name="fold8_controls_title">内側画面のジェスチャー</string>
+    <string name="fold8_controls_body">内側画面には大きなカプセル状のバーの代わりに、小さなジェスチャー操作部を表示します。外側画面は Samsung のナビゲーションを使用します。内側では Samsung の通知パネルや標準ジェスチャーのすべては使えません。</string>
+    <string name="need_folduo_home">演出を有効にする前に、Folduo を既定のホームに設定してください。</string>
 </resources>

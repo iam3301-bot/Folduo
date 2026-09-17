@@ -1,0 +1,12 @@
+<resources>
+    <string name="drawer_loading">アプリを読み込み中…</string>
+    <string name="drawer_count">%1$d 個のアプリ</string>
+    <string name="drawer_browse_hint">上下にスクロールしてすべてのアプリを表示。長押しでホームに固定できます。</string>
+    <string name="drawer_choose_hint">ホームの位置 %1$d に置くアプリを選択</string>
+    <string name="drawer_empty">開けるアプリがありません</string>
+    <string name="drawer_no_results">アプリが見つかりません。別の名前で検索してください。</string>
+    <string name="drawer_pin_title">「%1$s」をホームに固定</string>
+    <string name="drawer_slot_occupied">位置 %1$d · 現在：%2$s</string>
+    <string name="drawer_slot_empty">位置 %1$d · 空き</string>
+    <string name="drawer_pinned">「%1$s」をホームの位置 %2$d に固定しました</string>
+</resources>

@@ -24,7 +24,13 @@ public final class MotionService extends Service implements DisplayManager.Displ
     private volatile List<Anchor> anchors=List.of();
     private volatile int generation,sessionSerial;private volatile boolean stopped;private boolean paused=true,busy,frameScheduled,blockedUntilEndpoint,finishing;private String panelSignature="";
     private long angleStartedAt,angleSession,retryAt;private int recoveries;private UiText lastRecovery=UiText.raw("");private String notificationText="";
+    private long nonInteractiveSince;
     private boolean layoutPrepared,layoutPreparing,layoutRecovering,fixedPrimaryInner;
+    private final boolean nativeEndpoints=DeviceSupport.nativeEndpoints(Build.MODEL);
+    private boolean nativeAnimating,nativeCapturePending,nativeArming,nativeHeld,nativeHeldInner,nativeControlsReady,movingHome;
+    private final Map<Integer,String> nativePresented=new HashMap<>();
+    private final Set<Integer> nativeCoverPending=new HashSet<>();
+    private int movingTask=-1;
     private IShellBridge bound;private FoldPolicy policy;private float target=Float.NaN,smoothed=Float.NaN;
     private LocaleList uiLocales;private InnerNavigation navigation;private String navigationError="";
     private long measuredAt,lastFrame;private int source=-1;private DisplayManager displays;
@@ -32,13 +38,13 @@ public final class MotionService extends Service implements DisplayManager.Displ
     private long layerSerial;private long acceptedAngles;private String anchorError="",stage="idle";
     private final ArrayDeque<String> handoffs=new ArrayDeque<>();
     private final BroadcastReceiver power=new BroadcastReceiver(){public void onReceive(Context c,Intent intent){
-        if(Intent.ACTION_SCREEN_OFF.equals(intent.getAction())){if(!unlocked())pause();}
+        if(Intent.ACTION_SCREEN_OFF.equals(intent.getAction()))pauseIfNeeded();
         else if(Intent.ACTION_USER_PRESENT.equals(intent.getAction()))resume();
     }};
     private record Panel(Display display,boolean inner,int w,int h){}
-    private record Anchor(WindowManager wm,View view,WallpaperManager wallpaper){}
+    private record Anchor(int displayId,WindowManager wm,View view,WallpaperManager wallpaper){}
     private static final class Layer {
-        final WindowManager wm;final SnapshotView view;final SnapshotSurface root;final int displayId;final long serial;boolean committed;
+        final WindowManager wm;final SnapshotView view;final SnapshotSurface root;final int displayId;long serial;boolean committed,submitted;
         Layer(WindowManager wm,SnapshotView view,SnapshotSurface root,int displayId,long serial){this.wm=wm;this.view=view;this.root=root;this.displayId=displayId;this.serial=serial;}
     }
     private void trace(String message){stage=message;if(handoffs.size()>=32)handoffs.removeFirst();handoffs.addLast(SystemClock.elapsedRealtime()+":"+message);}
@@ -66,6 +72,7 @@ public final class MotionService extends Service implements DisplayManager.Displ
         String action=intent==null?"restore":intent.getAction();
         if("stop".equals(action)){MotionSettings.setEnabled(this,false);stopSelf();return START_NOT_STICKY;}
         if("restore".equals(action)&&!MotionSettings.enabled(this)){stopSelf();return START_NOT_STICKY;}
+        if(!DeviceSupport.homeReady(this)){MotionSettings.setEnabled(this,false);stopSelf();return START_NOT_STICKY;}
         MotionSettings.setEnabled(this,true);MotionSettings.recovery(this,"");
         if("restart".equals(action)){pause();recordRecovery(UiText.of(R.string.manual_restart));}
         resume();return START_STICKY;
@@ -77,11 +84,19 @@ public final class MotionService extends Service implements DisplayManager.Displ
         return new Notification.Builder(this,"motion").setSmallIcon(android.R.drawable.ic_menu_view).setContentTitle(getString(R.string.app_name)).setContentText(text).setStyle(new Notification.BigTextStyle().bigText(text)).setOnlyAlertOnce(true).setOngoing(true).setContentIntent(open).addAction(new Notification.Action.Builder(null,getString(R.string.resume),restart).build()).addAction(new Notification.Action.Builder(null,getString(R.string.stop),stop).build()).build();
     }
     private void updateNotification(){
-        String text=(status.is(R.string.angle_status)?UiText.of(layoutPrepared?R.string.active:R.string.close_fully_to_prepare):status).resolve(this);
+        String text=(status.is(R.string.angle_status)?UiText.of(layoutPrepared||nativeEndpoints?R.string.active:R.string.close_fully_to_prepare):status).resolve(this);
         if(!text.equals(notificationText)){notificationText=text;getSystemService(NotificationManager.class).notify(7,notification(text));}
     }
     private void recordRecovery(UiText reason){recoveries++;lastRecovery=reason;MotionSettings.recovery(this,reason);}
     private boolean unlocked(){return getSystemService(PowerManager.class).isInteractive()&&!getSystemService(KeyguardManager.class).isKeyguardLocked();}
+    private void pauseIfNeeded(){
+        if(unlocked()){nonInteractiveSince=0;return;}
+        if(getSystemService(KeyguardManager.class).isKeyguardLocked()||!nativeEndpoints||!nativeAnimating){pause();return;}
+        // Samsung briefly reports non-interactive while replacing the physical
+        // panel behind display 0. A real lock still suspends capture immediately.
+        long now=SystemClock.elapsedRealtime();if(nonInteractiveSince==0)nonInteractiveSince=now;
+        if(now-nonInteractiveSince>=400)pause();
+    }
     private void resume(){
         if(stopped||!unlocked()) {paused=true;status=UiText.of(R.string.waiting_unlock);return;}
         if(!paused)return;
@@ -90,7 +105,7 @@ public final class MotionService extends Service implements DisplayManager.Displ
     private void pause(){paused=true;++angleSession;cancelSession();removeAnchors();IShellBridge b=bound;bound=null;if(b!=null)controls.execute(()->{try{b.stopAngles();b.release();}catch(Exception ignored){}});status=UiText.of(R.string.waiting_unlock);}
     private final Runnable health=new Runnable(){public void run(){
         if(stopped)return;
-        if(!paused&&!unlocked())pause();
+        if(!paused)pauseIfNeeded();
         // Fold display changes can send SCREEN_OFF without a lock/unlock broadcast pair.
         if(paused&&unlocked())resume();
         if(!paused)BridgeConnection.connect(MotionService.this);
@@ -105,8 +120,18 @@ public final class MotionService extends Service implements DisplayManager.Displ
         // Wallpaper reports are continuous; a dead log reader or heartbeat expiry can
         // stop them while the binder itself remains alive. Re-register, not just wait.
         if(!paused&&bound!=null&&now-angleStartedAt>5000&&((source==1&&now-measuredAt>1500)||source<1)){
-            cancelSession();source=-1;target=smoothed=Float.NaN;measuredAt=0;blockedUntilEndpoint=false;
-            removeAnchors();rebuildPanels();recordRecovery(UiText.of(R.string.angle_recovery));status=UiText.of(R.string.angle_retry);startAngles(bound);
+            boolean idleFixedLayout=!nativeEndpoints&&layoutPrepared&&!layoutPreparing&&!layoutRecovering&&!blockedUntilEndpoint
+                &&!busy&&!finishing&&layers.isEmpty()&&policy!=null&&!policy.active&&Float.isFinite(target)
+                &&(policy.open?target>=176:target<=3)&&findPanel(true,true)!=null&&findPanel(false,true)!=null;
+            if(idleFixedLayout){
+                // A quiet wallpaper reader must not tear down a healthy idle layout.
+                // The next angle can arrive after the hinge has already started moving.
+                trace("resubscribing-idle-angles");
+            }else{
+                cancelSession();source=-1;target=smoothed=Float.NaN;measuredAt=0;blockedUntilEndpoint=false;
+                removeAnchors();rebuildPanels();
+            }
+            recordRecovery(UiText.of(R.string.angle_recovery));status=UiText.of(R.string.angle_retry);startAngles(bound);
         }
         if(!paused&&layoutPrepared)recoverLayoutIfNeeded();
         if(!paused&&layoutPrepared&&policy!=null&&policy.active&&Float.isFinite(target))handle(policy.update(target,SystemClock.elapsedRealtime()));
@@ -130,6 +155,7 @@ public final class MotionService extends Service implements DisplayManager.Displ
         synchronized(angleHistory){if(angleHistory.size()>=160)angleHistory.removeFirst();angleHistory.addLast(at+":"+value+":"+kind);}
         if(blockedUntilEndpoint){if(SystemClock.elapsedRealtime()<retryAt||value>3&&value<177)return;blockedUntilEndpoint=false;policy=new FoldPolicy(value>=177);}if(!Float.isFinite(smoothed))smoothed=value;
         status=UiText.of(R.string.angle_status,Math.round(value),UiText.of(kind==1?R.string.source_wallpaper:kind==2?R.string.source_samsung:R.string.source_standard));
+        if(nativeEndpoints){acceptNative(value);return;}
         if(!layoutPrepared){
             Panel primary=panelById(0);
             // Samsung cancels INNER_DEFAULT on complete closure. Arm OUTER_DEFAULT only
@@ -138,6 +164,160 @@ public final class MotionService extends Service implements DisplayManager.Displ
             if(!layoutPreparing){fixedPrimaryInner=false;prepareLayout();}return;
         }
         if(policy!=null)handle(policy.update(value,SystemClock.elapsedRealtime()));scheduleFrame();
+    }
+    private void acceptNative(float value){
+        if(finishing){
+            if(value>3&&value<174)finishing=false;
+            else if(policy!=null&&(policy.open&&value<=3||!policy.open&&value>=176)){
+                cancelSession();policy=new FoldPolicy(value>=176);smoothed=value;return;
+            }else return;
+        }
+        Panel primary=panelById(0);
+        if(primary==null)return;
+        if(policy==null)policy=new FoldPolicy(primary.inner);
+        FoldPolicy.Change change=policy.update(value,SystemClock.elapsedRealtime());
+        if(change==FoldPolicy.Change.OPEN||change==FoldPolicy.Change.CLOSE){
+            int ticket=++generation;nativeAnimating=true;nativeCapturePending=nativeControlsReady=false;nativeCoverPending.clear();nativePresented.clear();busy=true;
+            // Reversals reuse the frozen frames and their foreground metadata.
+            // In particular HOME must still wait for its wallpaper at the endpoint.
+            for(Layer layer:layers){layer.root.animate().cancel();layer.root.setAlpha(1);}
+            trace(change==FoldPolicy.Change.OPEN?"native-opening":"native-closing");
+            IShellBridge bridge=bound;
+            controls.execute(()->{try{
+                if(ticket!=generation||stopped||bridge==null)return;
+                Bundle result=bridge.statusIcons(true);
+                if(!result.getBoolean("ok"))throw new IllegalStateException(result.getString("error"));
+                main.postDelayed(()->{if(ticket==generation){nativeControlsReady=true;refreshNativeDisplay(ticket);}},34);
+            }catch(Exception e){main.post(()->{if(ticket==generation)fail(UiText.of(R.string.status_icons_failed,UiText.error(e)));});}});
+        }else if(change==FoldPolicy.Change.FINISH_OPEN||change==FoldPolicy.Change.FINISH_CLOSED){
+            finishNative(generation,0);
+        }
+        if(nativeAnimating)refreshNativeDisplay(generation);
+        scheduleFrame();
+    }
+    private void refreshNativeDisplay(int ticket){
+        if(stopped||paused||ticket!=generation||!nativeAnimating||!nativeControlsReady||finishing)return;
+        Panel primary=panelById(0);
+        if(primary==null||primary.display.getState()!=Display.STATE_ON)return;
+        for(Panel panel:new ArrayList<>(panels)){
+            if(panel.display.getState()!=Display.STATE_ON)continue;
+            FrameTexture actual=frozen.get(panel.inner),cover=actual;
+            if(cover==null)cover=frozen.get(!panel.inner);
+            int id=panel.display.getDisplayId();String key=panel.inner+":"+panel.w+":"+panel.h+":"+System.identityHashCode(cover);
+            if(cover!=null&&!key.equals(nativePresented.get(id))){
+                nativePresented.put(id,key);nativeCoverPending.add(id);
+                addLayer(panel,cover,false,ticket,()->{nativeCoverPending.remove(id);linkFrames();trace(actual==null?"native-resize-covered":"native-frame-committed");refreshNativeDisplay(ticket);});
+            }
+        }
+        if(frozen.get(primary.inner)==null&&!nativeCapturePending&&!nativeCoverPending.contains(0))captureNativeDisplay(ticket,primary);
+        // Start the destination panel near the first hinge movement, instead of
+        // waiting for Samsung's normal half-open threshold. The live app ALWAYS
+        // stays on display 0; only its physical panel changes, like a normal fold.
+        boolean primaryCovered=layers.stream().anyMatch(l->l.displayId==0&&l.committed);
+        // Switching CONCURRENT_INNER/OUTER_DEFAULT powers both panels off briefly.
+        // Keep the chosen mapping throughout a partial fold, including reversals;
+        // both snapshots can follow the hinge without remapping the live app.
+        if(primaryCovered&&frozen.get(primary.inner)!=null&&!nativeArming&&!nativeHeld)armNativeDestination(ticket,policy.open);
+    }
+    private void armNativeDestination(int ticket,boolean inner){
+        nativeArming=true;int session=sessionSerial;IShellBridge bridge=bound;
+        controls.execute(()->{try{
+            if(session!=sessionSerial||stopped||!nativeAnimating||bridge==null)return;
+            Bundle result=bridge.hold(inner,MotionSettings.ownerPid(this));
+            if(!result.getBoolean("ok"))throw new IllegalStateException(result.getString("error"));
+            MotionSettings.ownerPid(this,result.getInt("ownerPid"));
+            // A hinge reversal changes image generation, not this pending mapping.
+            main.post(()->{if(session==sessionSerial&&!stopped&&nativeAnimating){nativeArming=false;nativeHeld=true;nativeHeldInner=inner;trace("native-destination-lit");rebuildPanels();refreshNativeDisplay(generation);}});
+        }catch(Exception e){main.post(()->{if(session==sessionSerial&&nativeAnimating)fail(UiText.of(R.string.prepare_failed,UiText.error(e)));});}});
+    }
+    private void captureNativeDisplay(int ticket,Panel panel){
+        nativeCapturePending=true;
+        IShellBridge bridge=bound;float density=getResources().getDisplayMetrics().density;
+        jobs.execute(()->{try{
+            long deadline=SystemClock.elapsedRealtime()+1500;String previous="";int consecutive=0;Bundle state=null;
+            while(ticket==generation&&!stopped&&SystemClock.elapsedRealtime()<deadline){
+                state=bridge.taskWindowState(0,-2,false);
+                if(state.containsKey("error"))throw new IllegalStateException(state.getString("error"));
+                String geometry=state.getInt("taskId",-1)+":"+state.getString("geometry","");
+                consecutive=state.getBoolean("ready")?(geometry.equals(previous)?consecutive+1:1):0;previous=geometry;
+                if(consecutive>=2)break;
+                Thread.sleep(24);
+            }
+            if(ticket!=generation||stopped)return;
+            if(consecutive<2)throw new IllegalStateException("@folduo/err_no_frame");
+            NativeCaptureMask mask=nativeCaptureMask(ticket);if(mask==null)return;
+            Bundle shot=bridge.captureBehind(0,mask.exclude);Bitmap bitmap=shot.getParcelable("frame",Bitmap.class);
+            if(bitmap==null)throw new IllegalStateException(shot.getString("error","@folduo/capture_failed"));
+            NativeCaptureMask after=nativeCaptureMask(ticket);if(after==null)return;
+            // Logical display 0 can change dimensions while capture is in flight.
+            // Retry on the new panel; never label an inner frame as a cover frame.
+            if(mask.serial!=after.serial||bitmap.getWidth()!=panel.w||bitmap.getHeight()!=panel.h){
+                main.post(()->{if(ticket==generation){nativeCapturePending=false;rebuildPanels();refreshNativeDisplay(ticket);}});return;
+            }
+            int task=state.getInt("taskId",-1);boolean home=state.getBoolean("home");
+            // Light the destination as soon as the real source image is covered.
+            // CPU blur preparation continues independently of that display request.
+            FrameTexture sharp=FrameTexture.sharp(bitmap);
+            main.post(()->{
+                if(ticket!=generation||stopped)return;
+                frozen.put(panel.inner,sharp);movingTask=task;movingHome=home;
+                trace("native-source-captured");refreshNativeDisplay(ticket);
+            });
+            FrameTexture texture=FrameTexture.prepare(bitmap,density,()->ticket!=generation||stopped);
+            main.post(()->{
+                if(ticket!=generation||stopped||texture==null)return;
+                frozen.put(panel.inner,texture);movingTask=task;movingHome=home;nativeCapturePending=false;busy=false;
+                trace(panel.inner?"native-inner-captured":"native-cover-captured");refreshNativeDisplay(ticket);scheduleFrame();
+            });
+        }catch(Exception e){main.post(()->{if(ticket==generation)fail(UiText.of(R.string.transition_cancelled,UiText.error(e)));});}});
+    }
+    private record NativeCaptureMask(SurfaceControl[] exclude,long serial){}
+    private NativeCaptureMask nativeCaptureMask(int ticket)throws Exception{
+        CompletableFuture<NativeCaptureMask> result=new CompletableFuture<>();
+        main.post(()->result.complete(ticket==generation&&!stopped?new NativeCaptureMask(excluded(),layerSerial):null));
+        return result.get(500,TimeUnit.MILLISECONDS);
+    }
+    private void finishNative(int ticket,int attempt){
+        if(ticket!=generation||stopped||!nativeAnimating||finishing)return;
+        Panel primary=panelById(0);boolean inner=policy.open;
+        // A reversal that reaches the opposite endpoint needs one final handoff.
+        // Do this only at that endpoint, never whenever hinge direction changes.
+        if(nativeHeld&&nativeHeldInner!=inner&&!nativeArming)armNativeDestination(ticket,inner);
+        Layer latest=layers.stream().filter(l->l.displayId==0).max(Comparator.comparingLong(l->l.serial)).orElse(null);
+        boolean committed=primary!=null&&latest!=null&&latest.committed&&latest.view.inner==primary.inner
+            &&latest.root.getWidth()==primary.w&&latest.root.getHeight()==primary.h;
+        if(primary==null||primary.inner!=inner||primary.display.getState()!=Display.STATE_ON||nativeArming||nativeCapturePending||nativeCoverPending.contains(0)||frozen.get(inner)==null||!committed){
+            if(attempt>=60){fail(UiText.of(R.string.app_destination_unconfirmed));return;}
+            refreshNativeDisplay(ticket);main.postDelayed(()->finishNative(ticket,attempt+1),30);return;
+        }
+        finishing=true;busy=false;IShellBridge bridge=bound;
+        controls.execute(()->{try{
+            if(ticket!=generation||stopped||bridge==null)return;
+            bridge.release();
+            main.post(()->{if(ticket==generation){nativeHeld=false;trace("native-display-released");revealNativeEndpoint(ticket,inner,0);}});
+        }catch(Exception e){main.post(()->{if(ticket==generation)fail(UiText.of(R.string.handoff_failed,UiText.error(e)));});}});
+    }
+    private void revealNativeEndpoint(int ticket,boolean inner,int attempt){
+        if(ticket!=generation||stopped)return;
+        rebuildPanels();Panel primary=panelById(0);
+        if(primary==null||primary.inner!=inner||primary.display.getState()!=Display.STATE_ON){
+            if(attempt>=40){fail(UiText.of(R.string.app_destination_unconfirmed));return;}
+            main.postDelayed(()->revealNativeEndpoint(ticket,inner,attempt+1),30);return;
+        }
+        awaitApp(ticket,primary,()->{
+            if(!nativeAnimating)return;
+            if(inner&&target<174||!inner&&target>3){finishing=false;acceptNative(target);return;}
+            Panel current=panelById(0);
+            if(current==null||current.inner!=inner||current.display.getState()!=Display.STATE_ON){revealNativeEndpoint(ticket,inner,attempt+1);return;}
+            trace("native-endpoint-ready");
+            for(Layer layer:layers){layer.view.setAngle(inner?180:0);layer.root.animate().alpha(0).setDuration(100).start();}
+            main.postDelayed(()->{
+                if(ticket!=generation||stopped)return;
+                removeLayers();frozen.clear();movingTask=-1;movingHome=false;nativeAnimating=false;nativePresented.clear();nativeCoverPending.clear();finishing=false;
+                fixedPrimaryInner=inner;policy=new FoldPolicy(inner);smoothed=target;lastFrame=0;
+                restoreStatusIcons();trace("native-idle");
+            },120);
+        });
     }
     private void prepareLayout(){
         int ticket=++generation;layoutPreparing=true;trace("prepare-stable-panels");IShellBridge bridge=bound;
@@ -155,10 +335,11 @@ public final class MotionService extends Service implements DisplayManager.Displ
             if(attempt>=35){fail(UiText.of(R.string.prepare_unconfirmed));return;}
             main.postDelayed(()->awaitLayout(ticket,attempt+1),40);return;
         }
-        layoutPrepared=true;layoutPreparing=false;policy=new FoldPolicy(Float.isFinite(target)?target>=90:fixedPrimaryInner);trace("stable-panels-ready");
+        layoutPrepared=true;layoutPreparing=false;trace("stable-panels-ready");
+        policy=new FoldPolicy(Float.isFinite(target)?target>=90:fixedPrimaryInner);
     }
     private void recoverLayoutIfNeeded(){
-        if(stopped||paused||!layoutPrepared||layoutRecovering||bound==null)return;
+        if(nativeEndpoints||stopped||paused||!layoutPrepared||layoutRecovering||bound==null)return;
         if(findPanel(true,true)!=null&&findPanel(false,true)!=null)return;
         Panel primary=panelById(0);
         // Full closure cancels even OUTER_DEFAULT on this firmware. Re-add the inner
@@ -206,9 +387,20 @@ public final class MotionService extends Service implements DisplayManager.Displ
                 FrameTexture frame=cached;
                 if(frame==null){Bundle result=bridge.captureBehind(displayId,exclude);Bitmap bitmap=result.getParcelable("frame",Bitmap.class);if(bitmap==null)throw new IllegalStateException(result.getString("error","@folduo/capture_failed"));frame=FrameTexture.sharp(bitmap);}
                 FrameTexture ready=frame;
-                if(!frame.prepared)main.post(()->{
+                main.post(()->{
                     if(ticket!=generation||stopped)return;
-                    addLayer(outgoing,ready,true,ticket,()->trace("source-frame-committed"));
+                    if(!ready.prepared)addLayer(outgoing,ready,true,ticket,()->trace("source-frame-committed"));
+                    // The other panel is already lit in fixed dual-screen mode. Hide its old
+                    // desktop immediately, before CPU blur or the later application move.
+                    Panel incoming=findPanel(opening,true);
+                    if(incoming!=null){
+                        // A reversal already has the correctly deformed image on this panel.
+                        // Keep it: replacing it with a flat sharp hold would visibly jump.
+                        boolean covered=layers.stream().anyMatch(layer->layer.displayId==incoming.display.getDisplayId()&&layer.submitted
+                            &&layer.view.inner==incoming.inner&&layer.root.isAttachedToWindow()
+                            &&layer.root.getWidth()==incoming.w&&layer.root.getHeight()==incoming.h);
+                        if(!covered)addLayer(incoming,ready.transferSharp(outgoingInner),true,ticket,()->trace("destination-sharp-covered"));
+                    }
                 });
                 FrameTexture texture=frame.prepared?frame:FrameTexture.prepare(frame.sharp,density,()->stopped||ticket!=generation);
                 main.post(()->{
@@ -253,7 +445,7 @@ public final class MotionService extends Service implements DisplayManager.Displ
             if(ticket!=generation||stopped||bridge==null)return;
             Bundle result=bridge.moveApp(source.display.getDisplayId(),destination.display.getDisplayId(),false);
             if(!result.getBoolean("ok"))throw new IllegalStateException(result.getString("error"));
-            main.post(()->{if(ticket==generation){trace("app-moved-without-display-swap");awaitPanels(ticket,opening,0);}});
+            main.post(()->{if(ticket==generation){movingTask=result.getInt("taskId",-1);movingHome=result.getBoolean("home");trace("app-moved-without-display-swap");awaitPanels(ticket,opening,0);}});
         }catch(Exception e){main.post(()->{if(ticket==generation)fail(UiText.of(R.string.handoff_failed,UiText.error(e)));});}});
     }
     private void awaitPanels(int ticket,boolean opening,int attempt){
@@ -271,10 +463,11 @@ public final class MotionService extends Service implements DisplayManager.Displ
     }
     private void awaitApp(int ticket,Panel panel,Runnable ready){
         IShellBridge bridge=bound;
+        int expectedTask=movingTask;boolean wallpaperRequired=nativeEndpoints&&movingHome;
         jobs.execute(()->{try{
             long deadline=SystemClock.elapsedRealtime()+1800;String previous="";int consecutive=0;
             while(!stopped&&ticket==generation&&SystemClock.elapsedRealtime()<deadline){
-                Bundle state=bridge.windowState(panel.display.getDisplayId());String geometry=state.getString("geometry","");
+                Bundle state=bridge.taskWindowState(panel.display.getDisplayId(),expectedTask,wallpaperRequired);String geometry=state.getString("geometry","");
                 consecutive=state.getBoolean("ready")&&!geometry.isEmpty()?(geometry.equals(previous)?consecutive+1:1):0;previous=geometry;
                 if(consecutive>=2){main.post(()->{if(ticket==generation&&!stopped){trace("app-frame-ready");ready.run();}});return;}
                 Thread.sleep(32);
@@ -298,6 +491,22 @@ public final class MotionService extends Service implements DisplayManager.Displ
     private void addLayer(Panel panel,FrameTexture frame,boolean sharpHold,int ticket,Runnable ready){
         if(frame==null)return;
         try{
+            Layer current=layers.stream().filter(l->l.displayId==panel.display.getDisplayId()).max(Comparator.comparingLong(l->l.serial)).orElse(null);
+            if(current!=null&&current.submitted&&current.view.inner==panel.inner
+                &&current.root.isAttachedToWindow()&&current.root.getWidth()==panel.w&&current.root.getHeight()==panel.h){
+                // Keep the submitted surface while sharp/blur textures or direction change.
+                // Replacing the overlay window can briefly expose the native wallpaper.
+                long revision=++layerSerial;current.serial=revision;current.committed=false;
+                current.view.setFrame(frame);current.view.setSharpHold(sharpHold);
+                current.view.setAngle(Float.isFinite(smoothed)?smoothed:target);
+                if(!panel.inner)current.view.setRearFrame(frozen.get(true),false);
+                current.view.afterFrame(()->main.post(()->{
+                    if(ticket!=generation||stopped||!layers.contains(current)||current.serial!=revision)return;
+                    current.committed=current.submitted=true;ready.run();
+                }));
+                main.postDelayed(()->{if(ticket==generation&&layers.contains(current)&&current.serial==revision&&!current.committed)fail(UiText.of(R.string.frozen_draw_failed));},1400);
+                return;
+            }
             Context context=createDisplayContext(panel.display).createWindowContext(WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,null);
             WindowManager wm=context.getSystemService(WindowManager.class);
             SnapshotView view=new SnapshotView(context,frame,panel.inner,false);view.logicalWidth=panel.w;view.setSharpHold(sharpHold);
@@ -306,7 +515,7 @@ public final class MotionService extends Service implements DisplayManager.Displ
                 Layer layer=created[0];if(ticket!=generation||stopped||!layers.contains(layer))return;
                 // A late callback from an older frame must not remove its successor.
                 if(layers.stream().anyMatch(l->l.displayId==layer.displayId&&l.serial>layer.serial&&l.committed)){removeLayer(layer);return;}
-                layer.committed=true;
+                layer.committed=layer.submitted=true;
                 for(Layer old:new ArrayList<>(layers))if(old.displayId==layer.displayId&&old.serial<layer.serial)removeLayer(old);
                 ready.run();
             }));
@@ -314,7 +523,8 @@ public final class MotionService extends Service implements DisplayManager.Displ
             Layer layer=new Layer(wm,view,root,panel.display.getDisplayId(),++layerSerial);created[0]=layer;layers.add(layer);
             wm.addView(root,lp);view.setAngle(Float.isFinite(smoothed)?smoothed:target);
             // A missing frame callback must never leave a permanent frozen screen.
-            main.postDelayed(()->{if(ticket==generation&&layers.contains(layer)&&!layer.committed)fail(UiText.of(R.string.frozen_draw_failed));},1400);
+            long initialRevision=layer.serial;
+            main.postDelayed(()->{if(ticket==generation&&layers.contains(layer)&&layer.serial==initialRevision&&!layer.committed)fail(UiText.of(R.string.frozen_draw_failed));},1400);
         }catch(Exception e){fail(UiText.of(R.string.overlay_failed,UiText.error(e)));}
     }
     private void linkFrames(){
@@ -365,11 +575,13 @@ public final class MotionService extends Service implements DisplayManager.Displ
     }
     private void cancelSession(){
         ++generation;++sessionSerial;busy=false;finishing=false;layoutPrepared=layoutPreparing=layoutRecovering=false;removeNavigation();removeLayers();frozen.clear();
+        nativeAnimating=nativeCapturePending=nativeArming=nativeHeld=nativeControlsReady=false;nativePresented.clear();nativeCoverPending.clear();movingTask=-1;movingHome=false;
         if(policy!=null)policy.active=false;
         IShellBridge bridge=bound;if(bridge!=null)controls.execute(()->{try{bridge.release();}catch(Exception ignored){}});
     }
     private void restoreStatusIcons(){IShellBridge bridge=bound;if(bridge!=null)controls.execute(()->{try{bridge.statusIcons(false);}catch(Exception ignored){}});}
     private void updateNavigation(){
+        if(nativeEndpoints){removeNavigation();return;}
         Panel inner=findPanel(true,true);
         boolean show=!stopped&&!paused&&layoutPrepared&&!busy&&!finishing&&policy!=null&&!policy.active&&target>=176&&inner!=null&&inner.display.getDisplayId()==1;
         if(!show){removeNavigation();return;}
@@ -432,18 +644,24 @@ public final class MotionService extends Service implements DisplayManager.Displ
         panels.clear();panels.addAll(discovered);
         if(panelSignature.equals(signature.toString())&&!anchors.isEmpty())return;
         panelSignature=signature.toString();
-        // Window contexts may stay attached to logical display IDs across a physical swap.
-        removeAnchors();List<Anchor> next=new ArrayList<>();
+        // A live logical display keeps its wallpaper target through resize/remapping.
+        // Removing every anchor first can hide the wallpaper between replacements.
+        List<Anchor> previous=anchors;List<Anchor> next=new ArrayList<>();
         if(Settings.canDrawOverlays(this))for(Panel panel:panels){
+            Anchor existing=previous.stream().filter(a->a.displayId==panel.display.getDisplayId()&&a.view.isAttachedToWindow()).findFirst().orElse(null);
+            if(existing!=null){next.add(existing);continue;}
+            // A discovered logical display can briefly go OFF during a physical
+            // swap. Keep its attached target; only a new anchor requires it ON.
             if(panel.display.getState()!=Display.STATE_ON)continue;
             try{
                 Context context=createDisplayContext(panel.display).createWindowContext(WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,null);
                 WindowManager wm=context.getSystemService(WindowManager.class);View view=new View(context);view.setBackgroundColor(Color.TRANSPARENT);
                 WindowManager.LayoutParams lp=layout(WindowManager.LayoutParams.MATCH_PARENT,WindowManager.LayoutParams.MATCH_PARENT);lp.flags|=WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE|WindowManager.LayoutParams.FLAG_SHOW_WALLPAPER;lp.alpha=.01f;lp.setTitle("Folduo angle anchor");
-                wm.addView(view,lp);next.add(new Anchor(wm,view,WallpaperManager.getInstance(context)));
+                wm.addView(view,lp);next.add(new Anchor(panel.display.getDisplayId(),wm,view,WallpaperManager.getInstance(context)));
             }catch(Exception e){anchorError=ShellBridge.message(e);}
         }
         anchors=List.copyOf(next);
+        for(Anchor old:previous)if(!next.contains(old))try{old.wm.removeViewImmediate(old.view);}catch(Exception ignored){}
     }
     private void removeAnchors(){List<Anchor> previous=anchors;anchors=List.of();for(Anchor a:previous)try{a.wm.removeViewImmediate(a.view);}catch(Exception ignored){}}
     private void removeLayer(Layer layer){layers.remove(layer);layer.root.animate().cancel();try{layer.wm.removeViewImmediate(layer.root);}catch(Exception ignored){}}
@@ -455,11 +673,13 @@ public final class MotionService extends Service implements DisplayManager.Displ
         out.println("busy="+busy+" blocked="+blockedUntilEndpoint+" panels="+panelSignature+" anchors="+anchors.size()+" layers="+layers.size()+" anchorError="+anchorError);
         out.println("fixedPrimaryInner="+fixedPrimaryInner+" layoutPrepared="+layoutPrepared+" layoutPreparing="+layoutPreparing+" layoutRecovering="+layoutRecovering);
         out.println("innerNavigation="+(navigation!=null)+" navigationError="+navigationError);
+        out.println("nativeEndpoints="+nativeEndpoints+" nativeAnimating="+nativeAnimating+" nativeCapturePending="+nativeCapturePending+" nativeHeld="+nativeHeld+" nativeHeldInner="+nativeHeldInner+" movingTask="+movingTask+" movingHome="+movingHome);
         out.println("stage="+stage+" history="+String.join(",",handoffs));
         synchronized(angleHistory){out.println("angles="+String.join(",",angleHistory));}
         IShellBridge bridge=bound;if(bridge!=null)try{Bundle report=bridge.inspect();out.println("statusIconsHidden="+report.getBoolean("statusIconsHidden"));out.println(MainActivity.formatReport(this,report));}catch(Exception e){out.println(ShellBridge.message(e));}
     }
-    public void onDisplayAdded(int id){rebuildPanels();recoverLayoutIfNeeded();}public void onDisplayRemoved(int id){rebuildPanels();recoverLayoutIfNeeded();}public void onDisplayChanged(int id){rebuildPanels();recoverLayoutIfNeeded();}
+    private void displayChanged(){rebuildPanels();if(nativeEndpoints)refreshNativeDisplay(generation);else recoverLayoutIfNeeded();}
+    public void onDisplayAdded(int id){displayChanged();}public void onDisplayRemoved(int id){displayChanged();}public void onDisplayChanged(int id){displayChanged();}
     @Override public void onDestroy(){
         stopped=true;running=false;status=UiText.of(R.string.stopped);main.removeCallbacksAndMessages(null);Choreographer.getInstance().removeFrameCallback(this);
         displays.unregisterDisplayListener(this);unregisterReceiver(power);cancelSession();removeAnchors();poller.shutdownNow();

@@ -28,7 +28,7 @@ public class SnapshotSurfaceTest {
             overlayWindows=context.getSystemService(WindowManager.class);view=new SnapshotView(context,frame,false,false);view.setAngle(60);
             root=new SnapshotSurface(context,view,committed::countDown);overlayWindows.addView(root,MotionService.snapshotLayout());
         });
-        assertTrue(committed.await(3,TimeUnit.SECONDS));instrumentation.waitForIdleSync();Thread.sleep(250);
+        assertTrue(committed.await(3,TimeUnit.SECONDS));instrumentation.waitForIdleSync();
         Bitmap screen=instrumentation.getUiAutomation().takeScreenshot();assertNotNull(screen);
         for(int y=screen.getHeight()/4;y<screen.getHeight()*3/4;y+=11)for(int x=screen.getWidth()/4;x<screen.getWidth()*3/4;x+=11)
             assertTrue("TYPE_APPLICATION_OVERLAY must be fully opaque, not 80 percent: "+Integer.toHexString(screen.getPixel(x,y)),Color.red(screen.getPixel(x,y))<=1);
@@ -52,7 +52,7 @@ public class SnapshotSurfaceTest {
             view=new SnapshotView(activity,frame,false,false);view.setAngle(70);
             root=new SnapshotSurface(activity,view,committed::countDown);behind.addView(root,new android.widget.FrameLayout.LayoutParams(-1,-1));activity.setContentView(behind);
         });
-        assertTrue(committed.await(3,TimeUnit.SECONDS));instrumentation.waitForIdleSync();Thread.sleep(400);
+        assertTrue(committed.await(3,TimeUnit.SECONDS));instrumentation.waitForIdleSync();
         int[] location=new int[2];instrumentation.runOnMainSync(()->root.getLocationOnScreen(location));
         Bitmap screen=instrumentation.getUiAutomation().takeScreenshot();assertNotNull(screen);
         try(var out=new java.io.FileOutputStream(new java.io.File(activity.getExternalFilesDir(null),"surface-occlusion.png"))){screen.compress(Bitmap.CompressFormat.PNG,100,out);}
@@ -73,15 +73,49 @@ public class SnapshotSurfaceTest {
             view=new SnapshotView(activity,frame,true,false);view.setSharpHold(true);
             root=new SnapshotSurface(activity,view,committed::countDown);activity.setContentView(root);
         });
-        assertTrue("Freeze was submitted to the GPU before switching",committed.await(3,TimeUnit.SECONDS));
+        assertTrue("Freeze is presented before switching",committed.await(3,TimeUnit.SECONDS));
         assertTrue(root.getSurfaceControl().isValid());
         // Round trip the exclusion handle, as used by the Shizuku Binder call.
         Parcel parcel=Parcel.obtain();root.getSurfaceControl().writeToParcel(parcel,0);parcel.setDataPosition(0);
         SurfaceControl copy=SurfaceControl.CREATOR.createFromParcel(parcel);assertTrue(copy.isValid());copy.release();parcel.recycle();
-        Bitmap screen=instrumentation.getUiAutomation().takeScreenshot();assertNotNull(screen);
-        assertTrue("Committed freeze is visibly green: "+Integer.toHexString(screen.getPixel(screen.getWidth()/2,screen.getHeight()/2)),Color.green(screen.getPixel(screen.getWidth()/2,screen.getHeight()/2))>200);
+        assertPresentedColor("Initial freeze",Color.GREEN);
         CountDownLatch endpoint=new CountDownLatch(1);
-        instrumentation.runOnMainSync(()->{view.setSharpHold(false);view.setAngle(180);view.afterFrame(endpoint::countDown);});
-        assertTrue("Endpoint redraw commits before handoff",endpoint.await(3,TimeUnit.SECONDS));
+        Bitmap red=Bitmap.createBitmap(480,600,Bitmap.Config.ARGB_8888);red.eraseColor(Color.RED);
+        instrumentation.runOnMainSync(()->{view.setFrame(FrameTexture.sharp(red));view.setSharpHold(false);view.setAngle(180);view.afterFrame(endpoint::countDown);});
+        assertTrue("Endpoint redraw is presented before handoff",endpoint.await(3,TimeUnit.SECONDS));
+        assertPresentedColor("Endpoint freeze",Color.RED);
+    }
+    @Test public void changingSharpAndPreparedFramesKeepsTheSubmittedSurface()throws Exception{
+        var instrumentation=InstrumentationRegistry.getInstrumentation();
+        activity=instrumentation.startActivitySync(new Intent(instrumentation.getTargetContext(),MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+        Bitmap green=Bitmap.createBitmap(480,600,Bitmap.Config.ARGB_8888);green.eraseColor(Color.GREEN);
+        Bitmap blue=Bitmap.createBitmap(480,600,Bitmap.Config.ARGB_8888);blue.eraseColor(Color.BLUE);
+        FrameTexture sharp=FrameTexture.sharp(green),prepared=FrameTexture.prepare(blue,activity.getResources().getDisplayMetrics().density,()->false);
+        CountDownLatch first=new CountDownLatch(1);
+        instrumentation.runOnMainSync(()->{
+            view=new SnapshotView(activity,sharp,true,false);view.setAngle(100);
+            root=new SnapshotSurface(activity,view,first::countDown);activity.setContentView(root);
+        });
+        assertTrue(first.await(3,TimeUnit.SECONDS));SurfaceControl surface=root.getSurfaceControl();assertTrue(surface.isValid());
+        assertPresentedColor("Initial sharp texture",Color.GREEN);
+        for(int i=0;i<4;i++){
+            FrameTexture next=i%2==0?prepared:sharp;int expected=i%2==0?Color.BLUE:Color.GREEN;
+            CountDownLatch updated=new CountDownLatch(1);
+            instrumentation.runOnMainSync(()->{view.setFrame(next);view.afterFrame(updated::countDown);});
+            assertTrue("Replacement texture is presented without rebuilding the surface",updated.await(3,TimeUnit.SECONDS));
+            assertSame("The capture exclusion handle must survive texture updates",surface,root.getSurfaceControl());assertTrue(surface.isValid());
+            // No sleep/retry: a previous blue/green frame, black frame, or blended frame fails.
+            assertPresentedColor("Replacement texture iteration="+i,expected);
+        }
+    }
+    private void assertPresentedColor(String stage,int expected){
+        var instrumentation=InstrumentationRegistry.getInstrumentation();int[] point=new int[2];
+        instrumentation.runOnMainSync(()->{root.getLocationOnScreen(point);point[0]+=root.getWidth()/2;point[1]+=root.getHeight()/2;});
+        Bitmap screen=instrumentation.getUiAutomation().takeScreenshot();assertNotNull(screen);
+        for(int dy=-2;dy<=2;dy++)for(int dx=-2;dx<=2;dx++){
+            int pixel=screen.getPixel(point[0]+dx,point[1]+dy);
+            assertTrue(stage+" expected="+Integer.toHexString(expected)+" actual="+Integer.toHexString(pixel),
+                    Math.abs(Color.red(pixel)-Color.red(expected))<=2&&Math.abs(Color.green(pixel)-Color.green(expected))<=2&&Math.abs(Color.blue(pixel)-Color.blue(expected))<=2);
+        }
     }
 }

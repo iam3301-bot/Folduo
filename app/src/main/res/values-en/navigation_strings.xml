@@ -1,0 +1,5 @@
+<resources>
+    <string name="inner_gesture_window">Inner screen gestures</string>
+    <string name="inner_gesture_help">Swipe up for Home. Swipe up and hold for recent apps. Tap for recent apps and navigation controls.</string>
+    <string name="inner_gesture_back">Swipe inward from the screen edge to go back</string>
+</resources>

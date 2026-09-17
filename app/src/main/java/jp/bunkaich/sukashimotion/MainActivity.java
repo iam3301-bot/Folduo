@@ -45,9 +45,10 @@ public final class MainActivity extends Activity {
         if(!Settings.canDrawOverlays(this)){Toast.makeText(this,getString(R.string.need_overlay),Toast.LENGTH_LONG).show();return;}
         if(!BridgeConnection.permitted()){Toast.makeText(this,getString(R.string.need_shizuku),Toast.LENGTH_LONG).show();return;}
         if(!DeviceSupport.eligible(Build.MODEL)){Toast.makeText(this,getString(R.string.unsupported_device),Toast.LENGTH_LONG).show();return;}
+        if(!DeviceSupport.homeReady(this)){Toast.makeText(this,R.string.need_folduo_home,Toast.LENGTH_LONG).show();defaultHome();return;}
         if(checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)!=android.content.pm.PackageManager.PERMISSION_GRANTED)requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS},8);
         BridgeConnection.connect(this);MotionSettings.setEnabled(this,true);startForegroundService(new Intent(this,MotionService.class).setAction(MotionService.running?"restart":"start"));
-        Toast.makeText(this,getString(R.string.close_to_prepare),Toast.LENGTH_LONG).show();finish();
+        Toast.makeText(this,getString(DeviceSupport.nativeEndpoints(Build.MODEL)?R.string.native_start_message:R.string.close_to_prepare),Toast.LENGTH_LONG).show();finish();
     }
     void probe(int attempt){
         diagnostic=ui.diagnostic; if(diagnostic==null||probing)return;

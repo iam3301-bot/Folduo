@@ -7,6 +7,12 @@ public class FoldPolicyTest {
  @Test public void closingAndEndpointDwell(){FoldPolicy p=new FoldPolicy(true);assertEquals(CLOSE,p.update(172,0));assertEquals(NONE,p.update(0,40));assertEquals(FINISH_CLOSED,p.update(0,160));}
  @Test public void jitterNeverReverses(){FoldPolicy p=new FoldPolicy(false);p.update(20,0);for(int i=0;i<10;i++){assertEquals(NONE,p.update(25,10));assertEquals(NONE,p.update(18,20));}assertTrue(p.open);}
  @Test public void reversalUsesHysteresisInBothDirections(){FoldPolicy p=new FoldPolicy(false);p.update(20,0);p.update(100,10);assertEquals(CLOSE,p.update(85,20));p.update(60,30);assertEquals(OPEN,p.update(75,40));}
+ @Test public void pausingHalfOpenAndContinuingDoesNotRestartTheTransition(){
+  FoldPolicy p=new FoldPolicy(false);assertEquals(OPEN,p.update(20,0));assertEquals(NONE,p.update(90,100));
+  for(long time:new long[]{200,1000,5000,30000})assertEquals(NONE,p.update(90,time));
+  assertTrue(p.active);assertTrue(p.open);assertEquals(NONE,p.update(100,30020));
+  assertEquals(CLOSE,p.update(87,30040));assertEquals(NONE,p.update(87,60000));assertEquals(NONE,p.update(70,60020));
+ }
  @Test public void invalidSamplesCannotStartMotion(){FoldPolicy p=new FoldPolicy(false);for(float value:new float[]{Float.NaN,Float.POSITIVE_INFINITY,-1,181})assertEquals(NONE,p.update(value,0));assertFalse(p.active);}
  @Test public void skippedMotionDoesNotInventAnimation(){FoldPolicy p=new FoldPolicy(false);assertEquals(NONE,p.update(180,0));assertTrue(p.open);assertFalse(p.active);assertEquals(CLOSE,p.update(160,10));}
  @Test public void leavingEndpointResetsDwell(){FoldPolicy p=new FoldPolicy(false);p.update(30,0);p.update(180,10);p.update(170,100);p.update(180,120);assertEquals(NONE,p.update(180,200));assertEquals(FINISH_OPEN,p.update(180,240));}

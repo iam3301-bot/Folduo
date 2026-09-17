@@ -145,7 +145,7 @@ public final class ShellBridge extends IShellBridge.Stub {
     @Override public synchronized Bundle statusIcons(boolean hidden){
         authorize();long token=Binder.clearCallingIdentity();Bundle result=new Bundle();
         try{
-            if(hidden&&(sink==null||displayControl==null||!displayControl.isOwned()))throw new IllegalStateException("@folduo/err_monitor_inactive");
+            if(hidden&&(sink==null||!DeviceSupport.nativeEndpoints(Build.MODEL)&&(displayControl==null||!displayControl.isOwned())))throw new IllegalStateException("@folduo/err_monitor_inactive");
             if(bars==null)bars=new StatusBarControl();bars.hide(hidden);result.putBoolean("ok",true);
         }catch(Exception e){result.putString("error",message(e));}finally{Binder.restoreCallingIdentity(token);}return result;
     }
@@ -183,13 +183,19 @@ public final class ShellBridge extends IShellBridge.Stub {
         finally{Binder.restoreCallingIdentity(token);}return result;
     }
     @Override public Bundle windowState(int displayId){
+        return taskWindowState(displayId,-1,false);
+    }
+    @Override public Bundle taskWindowState(int displayId,int taskId,boolean requireWallpaper){
         authorize();long token=Binder.clearCallingIdentity();Bundle result=new Bundle();java.lang.Process process=null;
         try{
-            process=new ProcessBuilder("dumpsys","window","visible-apps").start();
+            // -2 follows the foreground task without moving it. HOME also needs its
+            // wallpaper to have drawn before it is used as a transition texture.
+            if(taskId==-2){Bundle task=new TaskDisplayRouter().foreground(displayId);result.putAll(task);taskId=task.getInt("taskId");requireWallpaper|=task.getBoolean("home");}
+            process=new ProcessBuilder("dumpsys","window",requireWallpaper?"windows":"visible-apps").start();
             java.lang.Process owned=process;
             ScheduledFuture<?> timeout=life.schedule(owned::destroy,1200,TimeUnit.MILLISECONDS);
             String dump;try(InputStream in=process.getInputStream()){dump=new String(in.readAllBytes(),java.nio.charset.StandardCharsets.UTF_8);}finally{timeout.cancel(false);}
-            WindowReadiness.State state=WindowReadiness.parse(dump,displayId);
+            WindowReadiness.State state=WindowReadiness.parse(dump,displayId,taskId,requireWallpaper);
             result.putBoolean("ready",state.ready());result.putString("geometry",state.geometry());
         }catch(Exception e){result.putString("error",message(e));}
         finally{if(process!=null)process.destroy();Binder.restoreCallingIdentity(token);}return result;

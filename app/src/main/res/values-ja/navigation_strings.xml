@@ -1,0 +1,5 @@
+<resources>
+    <string name="inner_gesture_window">内側画面のジェスチャー</string>
+    <string name="inner_gesture_help">上にスワイプしてホームへ。上にスワイプして止めると履歴を表示。タップして履歴とナビゲーション操作を開きます。</string>
+    <string name="inner_gesture_back">画面の端から内側にスワイプして戻る</string>
+</resources>

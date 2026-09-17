@@ -97,7 +97,7 @@ final class ControlPanel {
         text(preview,s(R.string.preview_hint),14,GlassStyle.SECONDARY,2);
         button(preview,R.string.preview,false,()->activity.startActivity(new Intent(activity,PreviewActivity.class)));
         LinearLayout home=card();heading(home,R.string.home_description);
-        text(home,s(R.string.home_setup),14,GlassStyle.SECONDARY,6);
+        text(home,s("SM-F9760".equals(Build.MODEL)?R.string.fold8_home_setup:R.string.home_setup),14,GlassStyle.SECONDARY,6);
         button(home,R.string.home_open,false,activity::openHome);
         text(page,s(R.string.privacy_short),12,GlassStyle.SECONDARY,8).setGravity(Gravity.CENTER);
     }
@@ -129,7 +129,8 @@ final class ControlPanel {
         text(accessibility,s(R.string.reduce_motion_body),13,GlassStyle.SECONDARY,0);
     }
     private void settings() {
-        title(R.string.nav_settings,R.string.permission_summary);
+        boolean fold8="SM-F9760".equals(Build.MODEL);
+        title(R.string.nav_settings,fold8?R.string.fold8_setup_summary:R.string.permission_summary);
         LinearLayout device=card();heading(device,R.string.device_title);
         text(device,activity.getString(R.string.device_details,Build.MODEL,Build.VERSION.RELEASE),14,GlassStyle.INK,8);
         text(device,s("SM-F9760".equals(Build.MODEL)?R.string.device_fold8:DeviceSupport.eligible(Build.MODEL)?R.string.device_verified:R.string.device_preview_only),13,GlassStyle.SECONDARY,0);
@@ -137,13 +138,15 @@ final class ControlPanel {
         button(connect,R.string.connect_shizuku,true,activity::connectShizuku);button(connect,R.string.open_shizuku,false,activity::openShizuku);
         LinearLayout overlay=card();heading(overlay,R.string.setup_step_2);text(overlay,s(R.string.setup_overlay_body),14,GlassStyle.SECONDARY,2);
         button(overlay,R.string.allow_overlay,false,activity::allowOverlay);
-        LinearLayout wallpaper=card();heading(wallpaper,R.string.wallpaper_title);text(wallpaper,s(R.string.wallpaper_body),14,GlassStyle.SECONDARY,2);
+        LinearLayout wallpaper=card();heading(wallpaper,fold8?R.string.fold8_wallpaper_step:R.string.wallpaper_title);text(wallpaper,s(R.string.wallpaper_body),14,GlassStyle.SECONDARY,2);
         button(wallpaper,R.string.read_setup,false,activity::openGuide);
-        LinearLayout start=card();heading(start,R.string.setup_step_3);text(start,s(R.string.screen_access_body),14,GlassStyle.SECONDARY,8);text(start,s(R.string.power_body),13,GlassStyle.SECONDARY,2);
+        LinearLayout home=card();heading(home,fold8?R.string.fold8_home_step:R.string.home_description);
+        text(home,s(fold8?R.string.fold8_home_setup:R.string.home_setup),14,GlassStyle.SECONDARY,6);
+        button(home,R.string.home_default,fold8,activity::defaultHome);
+        button(home,fold8?R.string.fold8_controls_title:R.string.inner_controls_title,false,()->explain(fold8?R.string.fold8_controls_title:R.string.inner_controls_title,fold8?R.string.fold8_controls_body:R.string.inner_controls_body));
+        LinearLayout start=card();heading(start,fold8?R.string.fold8_enable_step:R.string.setup_step_3);text(start,s(R.string.screen_access_body),14,GlassStyle.SECONDARY,8);text(start,s(R.string.power_body),13,GlassStyle.SECONDARY,2);
         button(start,MotionSettings.enabled(activity)?R.string.resume_animation:R.string.enable_animation,true,activity::startMotion);
         button(start,R.string.stop_animation,false,activity::stopMotion);state=text(start,"",13,GlassStyle.SECONDARY,0);state.setPadding(0,dp(16),0,0);
-        LinearLayout home=card();heading(home,R.string.home_description);button(home,R.string.home_default,false,activity::defaultHome);
-        button(home,R.string.inner_controls_title,false,()->explain(R.string.inner_controls_title,R.string.inner_controls_body));
         LinearLayout recovery=card();heading(recovery,R.string.recovery_title);text(recovery,s(R.string.recovery_body),14,GlassStyle.SECONDARY,12);text(recovery,s(R.string.battery_body),13,GlassStyle.SECONDARY,2);
         button(recovery,R.string.battery_settings,false,activity::batterySettings);
         LinearLayout sensor=card();heading(sensor,R.string.sensors_title);text(sensor,s(R.string.sensors_body),13,GlassStyle.SECONDARY,2);

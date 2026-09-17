@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="home_page_number">%1$d / %2$d · 左右滑动浏览</string>
+    <string name="home_page_favorites">常用应用</string>
+    <string name="home_page_pin_description">%1$s，长按固定到首页</string>
+</resources>

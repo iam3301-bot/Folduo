@@ -1,0 +1,5 @@
+<resources>
+    <string name="inner_gesture_window">内屏手势</string>
+    <string name="inner_gesture_help">上滑回桌面，上滑停留查看最近任务；轻点打开最近任务和导航操作</string>
+    <string name="inner_gesture_back">从屏幕边缘向内滑动返回</string>
+</resources>

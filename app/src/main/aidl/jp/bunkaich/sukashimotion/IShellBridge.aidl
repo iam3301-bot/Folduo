@@ -16,5 +16,6 @@ interface IShellBridge {
  Bundle statusIcons(boolean hidden) = 10;
  Bundle navigate(int displayId, int action, int taskId) = 11;
  Bundle launchApp(int displayId, String component) = 12;
+ Bundle taskWindowState(int displayId, int taskId, boolean requireWallpaper) = 13;
  void destroy() = 16777114;
 }

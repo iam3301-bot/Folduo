@@ -224,6 +224,20 @@
     <string name="fold_illustration">A half-open phone with two translucent panels connected by a hinge</string>
     <string name="about_title">About Folduo</string>
     <string name="about_body">A Chinese edition of the open-source Folduo project. Native Android materials inspired by liquid glass.</string>
-    <string name="device_fold8">Continuous angles and three physical fold cycles were checked on SM-F9760 with One UI 9.0. Configure Samsung interactive wallpaper, then start Shizuku and the animation.</string>
+    <string name="device_fold8">For SM-F9760 with One UI 9.0, using the upstream approach with Folduo Home and both displays active. Shizuku, overlay permission and Samsung interactive wallpaper are required. Physical testing is still in progress.</string>
     <string name="quick_manage">Animation settings</string>
+    <string name="native_controls_title">Inner navigation</string>
+    <string name="native_controls_body">SM-F9760 currently uses Folduo Home with both displays active. The inner display provides a small gesture control, without the Samsung notification panel or full native gestures.</string>
+    <string name="native_overlay_body">Shows transition images while folding and provides inner-display navigation.</string>
+    <string name="native_power_body">Both displays stay on while running, increasing power use. Stopping the animation or locking the phone releases screen control. Stop other fold animation tools first.</string>
+    <string name="native_start_message">Set Folduo as the default home, then fully close the phone once to initialize.</string>
+    <string name="native_recovery_body">The connection normally recovers automatically. You can also tap Resume in the notification. Start Shizuku after rebooting. If you force-stopped this app, enable it again here.</string>
+    <string name="fold8_setup_summary">Prepare permissions and interactive wallpaper, set Folduo as the default home, then enable the animation.</string>
+    <string name="fold8_wallpaper_step">Step 3 · Prepare interactive wallpaper</string>
+    <string name="fold8_home_step">Step 4 · Set up Folduo Home</string>
+    <string name="fold8_enable_step">Step 5 · Enable fold animation</string>
+    <string name="fold8_home_setup">This setup uses Folduo as the default home to prioritize continuous fold animation. Tap Set as default home and select Folduo in the system chooser. Long-press a home icon to replace its app.</string>
+    <string name="fold8_controls_title">Inner gesture navigation</string>
+    <string name="fold8_controls_body">The inner display uses a small gesture control instead of the large pill-shaped navigation bar. The cover display uses Samsung navigation. The inner display does not provide the Samsung notification panel or full native gestures.</string>
+    <string name="need_folduo_home">Set Folduo as the default home before enabling the animation.</string>
 </resources>

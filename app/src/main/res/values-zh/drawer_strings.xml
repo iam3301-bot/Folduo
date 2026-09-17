@@ -1,0 +1,12 @@
+<resources>
+    <string name="drawer_loading">正在读取应用…</string>
+    <string name="drawer_count">共 %1$d 个应用</string>
+    <string name="drawer_browse_hint">上下滑动浏览全部应用，长按可固定到首页</string>
+    <string name="drawer_choose_hint">点选应用，替换首页位置 %1$d</string>
+    <string name="drawer_empty">没有可打开的应用</string>
+    <string name="drawer_no_results">没有找到应用，试试其他名称</string>
+    <string name="drawer_pin_title">将“%1$s”固定到首页</string>
+    <string name="drawer_slot_occupied">位置 %1$d · 当前：%2$s</string>
+    <string name="drawer_slot_empty">位置 %1$d · 空位置</string>
+    <string name="drawer_pinned">已将“%1$s”固定到首页位置 %2$d</string>
+</resources>

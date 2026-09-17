@@ -82,9 +82,19 @@ final class GlassStyle {
         uniform float density;
         uniform float concentration;
         uniform float backdrop;
+        uniform float palette;
         half3 scene(float2 p) {
             float2 uv = p / max(viewport, float2(1));
             half3 color = half3(0.94, 0.97, 0.995);
+            if (palette > -.5 && palette < .5) {
+                float glow = exp(-3.0 * dot(uv-float2(.8,.25), uv-float2(.8,.25)));
+                return mix(half3(.84,.85,.88), half3(.995,.985,.96), glow);
+            }
+            if (palette > .5 && palette < 1.5) {
+                float glow = exp(-5.0 * dot((uv-float2(.8,.18))*float2(1,1.5), (uv-float2(.8,.18))*float2(1,1.5)));
+                float lower = exp(-7.0 * dot(uv-float2(.1,.85), uv-float2(.1,.85)));
+                return half3(.055,.068,.092) + half3(.19,.22,.27)*glow + half3(.04,.08,.105)*lower;
+            }
             float blue = exp(-3.9 * dot((uv-float2(.9,.28))*float2(1.1,1.8), (uv-float2(.9,.28))*float2(1.1,1.8)));
             float aqua = exp(-5.0 * dot((uv-float2(.03,.66))*float2(1.3,1.4), (uv-float2(.03,.66))*float2(1.3,1.4)));
             color = mix(color, half3(.49,.73,.96), blue * .72);
@@ -102,7 +112,7 @@ final class GlassStyle {
             float2 sampleAt = origin+p-normal*edge*11.0*density;
             float blur = (3.0 + concentration*9.0)*density;
             half3 color = (scene(sampleAt)*2 + scene(sampleAt+float2(blur,0)) + scene(sampleAt-float2(blur,0)) + scene(sampleAt+float2(0,blur)) + scene(sampleAt-float2(0,blur)))/6;
-            color = mix(color,half3(1),.24 + concentration*.64);
+            color = palette > .5 && palette < 1.5 ? mix(color,half3(.12,.15,.20),.3 + concentration*.3) : mix(color,half3(1),.24 + concentration*.64);
             float bevel = 1.0-smoothstep(.2*density,1.4*density,-distance);
             float light = clamp(.6-dot(normal,normalize(float2(-.4,-1)))*.3,.0,1.);
             color = mix(color,half3(1),bevel*light*.95);
@@ -115,12 +125,14 @@ final class GlassStyle {
         private final View owner;
         private final float radius;
         private final boolean backdrop;
+        private final int palette;
         private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
         private final Paint rim = new Paint(Paint.ANTI_ALIAS_FLAG);
         private final int[] location = new int[2], rootLocation = new int[2];
         private RuntimeShader shader;
-        Material(View owner, float radius, boolean backdrop) {
-            this.owner=owner; this.radius=dp(owner.getContext(),radius); this.backdrop=backdrop;
+        Material(View owner, float radius, boolean backdrop) {this(owner,radius,backdrop,-1);}
+        Material(View owner, float radius, boolean backdrop,int palette) {
+            this.palette=palette;this.owner=owner; this.radius=dp(owner.getContext(),radius); this.backdrop=backdrop;
             try { shader=new RuntimeShader(SCENE); } catch (RuntimeException error) {
                 android.util.Log.w("FolduoGlass", "Glass shader unavailable; using fallback", error); shader=null;
             }
@@ -134,10 +146,12 @@ final class GlassStyle {
                 shader.setFloatUniform("origin",location[0]-rootLocation[0],location[1]-rootLocation[1]);
                 shader.setFloatUniform("viewport",Math.max(root.getWidth(),1),Math.max(root.getHeight(),1));
                 shader.setFloatUniform("radius",radius); shader.setFloatUniform("density",d);
-                shader.setFloatUniform("concentration",concentration(owner.getContext())); shader.setFloatUniform("backdrop",backdrop?1:0);
+                shader.setFloatUniform("concentration",concentration(owner.getContext())); shader.setFloatUniform("backdrop",backdrop?1:0);shader.setFloatUniform("palette",palette);
                 paint.setShader(shader);
             } else {
-                paint.setShader(new LinearGradient(0,0,b.width(),b.height(),backdrop?0xffe5f2fd:0xfff2f8fc,backdrop?0xffbadbe9:0xffe8f3fa,Shader.TileMode.CLAMP));
+                int first=palette==1?0xff202733:palette==0?0xfff8f6f0:backdrop?0xffe5f2fd:0xfff2f8fc;
+                int last=palette==1?0xff101824:palette==0?0xffd8dbe3:backdrop?0xffbadbe9:0xffe8f3fa;
+                paint.setShader(new LinearGradient(0,0,b.width(),b.height(),first,last,Shader.TileMode.CLAMP));
             }
             canvas.save(); canvas.translate(b.left,b.top);
             canvas.drawRoundRect(0,0,b.width(),b.height(),radius,radius,paint);

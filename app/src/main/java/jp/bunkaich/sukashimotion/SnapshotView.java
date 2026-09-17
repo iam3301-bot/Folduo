@@ -2,7 +2,10 @@ package jp.bunkaich.sukashimotion;
 
 import android.content.Context;
 import android.graphics.*;
+import android.os.Build;
 import android.os.SystemClock;
+import android.view.AttachedSurfaceControl;
+import android.view.SurfaceControl;
 import android.view.View;
 
 final class SnapshotView extends View {
@@ -10,6 +13,7 @@ final class SnapshotView extends View {
     FrameTexture frame;final boolean inner,leftOnly;
     int logicalWidth; private float angle;private FrameTexture rearFrame;private long rearSince;private boolean sharpHold;
     private final Paint holdPaint=new Paint(Paint.FILTER_BITMAP_FLAG);
+    private final Rect holdSource=new Rect(),holdDestination=new Rect();
     SnapshotView(Context context,FrameTexture frame,boolean inner,boolean leftOnly){
         super(context);this.frame=frame;this.inner=inner;this.leftOnly=leftOnly;angle=inner?180:0;paint.setShader(shader);
         setContentDescription(context.getString(R.string.snapshot_description));setImportantForAccessibility(IMPORTANT_FOR_ACCESSIBILITY_NO);
@@ -36,8 +40,26 @@ final class SnapshotView extends View {
     }
     void setFrame(FrameTexture next){frame=next;bindTextures();invalidate();}
     void setSharpHold(boolean value){sharpHold=value;invalidate();}
-    void afterFrame(Runnable committed){
-        getViewTreeObserver().registerFrameCommitCallback(committed);invalidate();
+    void afterFrame(Runnable presented){
+        // A GPU commit only submits to the swap chain; the previous buffer may still be visible.
+        getViewTreeObserver().registerFrameCommitCallback(()->post(()->afterSubmittedFrame(this,presented)));invalidate();
+    }
+    static void afterSubmittedFrame(View view,Runnable presented){
+        if(!view.isAttachedToWindow())return;
+        AttachedSurfaceControl root=view.getRootSurfaceControl();
+        if(Build.VERSION.SDK_INT>=35&&root!=null){
+            SurfaceControl.Transaction transaction=new SurfaceControl.Transaction();
+            transaction.addTransactionCompletedListener(view.getContext().getMainExecutor(),stats->{
+                if(view.isAttachedToWindow())presented.run();
+            });
+            // Merge with this ViewRoot's next buffer, rather than applying an unrelated transaction
+            // that could overtake its buffer queue. The ViewRoot consumes the transaction on success.
+            if(root.applyTransactionOnDraw(transaction)){view.invalidate();return;}
+            transaction.close();
+        }
+        // API 33–34 have no public transaction-presented callback. Keep the submitted image in
+        // place across two display frames before changing screens or removing the previous layer.
+        view.postOnAnimation(()->view.postOnAnimation(()->{if(view.isAttachedToWindow())presented.run();}));
     }
     void setRearFrame(FrameTexture rear,boolean animate){
         if(inner||rear==rearFrame)return;
@@ -48,7 +70,21 @@ final class SnapshotView extends View {
         if(Math.abs(angle-next)<.00001f)return;angle=next;invalidate();
     }
     @Override protected void onDraw(Canvas canvas){
-        if(sharpHold||!frame.prepared){canvas.drawColor(Color.BLACK);canvas.drawBitmap(frame.sharp,null,new Rect(0,0,getWidth(),getHeight()),holdPaint);return;}
+        if(sharpHold||!frame.prepared){
+            canvas.drawColor(Color.BLACK);int w=getWidth(),h=getHeight();holdDestination.set(0,0,w,h);
+            switch(frame.sharpMapping){
+                case DIRECT -> canvas.drawBitmap(frame.sharp,null,holdDestination,holdPaint);
+                case COVER_TO_INNER -> {
+                    holdDestination.set(0,0,w/2,h);canvas.drawBitmap(frame.sharp,null,holdDestination,holdPaint);
+                    holdDestination.set(w/2,0,w,h);canvas.drawBitmap(frame.sharp,null,holdDestination,holdPaint);
+                }
+                case INNER_RIGHT_TO_COVER -> {
+                    holdSource.set(frame.sharp.getWidth()/2,0,frame.sharp.getWidth(),frame.sharp.getHeight());
+                    canvas.drawBitmap(frame.sharp,holdSource,holdDestination,holdPaint);
+                }
+            }
+            return;
+        }
         GlassProjection.Pose pose=GlassProjection.coverPose(angle);
         shader.setFloatUniform("pose",pose.expansion(),pose.taper());
         GlassProjection.Plane plane=GlassProjection.innerPlane(angle);

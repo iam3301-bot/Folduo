@@ -25,6 +25,15 @@ final class AppCatalog {
         Collator collator=Collator.getInstance(context.getResources().getConfiguration().getLocales().get(0));
         result.sort((a,b)->collator.compare(a.label,b.label)); return result;
     }
+    static void pin(SharedPreferences prefs,ComponentName component,int slot){
+        if(slot<0||slot>=16)throw new IllegalArgumentException("Invalid favorite slot");
+        String chosen=component.flattenToString(),displaced=prefs.getString("slot_"+slot,"");
+        SharedPreferences.Editor edit=prefs.edit();boolean swapped=false;
+        for(int other=0;other<16;other++)if(other!=slot&&chosen.equals(prefs.getString("slot_"+other,null))){
+            edit.putString("slot_"+other,!swapped&&!chosen.equals(displaced)?displaced:"");swapped=true;
+        }
+        edit.putString("slot_"+slot,chosen).apply();
+    }
     static List<App> favorites(List<App> all, SharedPreferences prefs) {
         List<App> picks=new ArrayList<>();
         // Stable slot ids, including gaps: uninstalling an app must not reorder the home screen.

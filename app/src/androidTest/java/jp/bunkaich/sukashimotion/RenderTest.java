@@ -17,11 +17,14 @@ public class RenderTest {
   return render(inner,angle,source,linked,false);
  }
  private Bitmap render(boolean inner,float angle,Bitmap source,Bitmap linked,boolean physical)throws Exception{
+  FrameTexture frame=FrameTexture.prepare(source,1,()->false);
+  FrameTexture rear=linked==null?null:FrameTexture.prepare(linked,1,()->false);
+  return render(inner,angle,frame,rear,physical);
+ }
+ private Bitmap render(boolean inner,float angle,FrameTexture frame,FrameTexture rear,boolean physical)throws Exception{
   Context context=InstrumentationRegistry.getInstrumentation().getTargetContext();
   android.content.res.Configuration config=new android.content.res.Configuration(context.getResources().getConfiguration());config.densityDpi=160;
   Context renderContext=context.createConfigurationContext(config);
-  FrameTexture frame=FrameTexture.prepare(source,1,()->false);
-  FrameTexture rear=linked==null?null:FrameTexture.prepare(linked,1,()->false);
   android.media.ImageReader reader=android.media.ImageReader.newInstance(640,720,PixelFormat.RGBA_8888,2,android.hardware.HardwareBuffer.USAGE_GPU_SAMPLED_IMAGE|android.hardware.HardwareBuffer.USAGE_GPU_COLOR_OUTPUT);
   HardwareRenderer renderer=new HardwareRenderer();renderer.setSurface(reader.getSurface());
   InstrumentationRegistry.getInstrumentation().runOnMainSync(()->{
@@ -163,6 +166,34 @@ public class RenderTest {
   assertTrue(cover.prepared&&inner.prepared);
   assertEquals(Color.BLUE,cover.sharp.getPixel(160,360));assertEquals(Color.BLUE,inner.sharp.getPixel(100,360));assertEquals(Color.BLUE,inner.sharp.getPixel(540,360));
   for(Bitmap level:inner.levels){int pixel=level.getPixel(level.getWidth()/4,level.getHeight()/2);assertTrue("Cropped right image remains blue after blur",Color.blue(pixel)>240&&Color.red(pixel)<15);}
+ }
+ @Test public void earlyInnerCoverDuplicatesTheHardwareSourceOnBothPanes()throws Exception{
+  Bitmap source=hardwareGradient(240,360);FrameTexture mapped=FrameTexture.sharp(source).transferSharp(false);
+  assertSame("Early cover cannot read back or copy the hardware bitmap",source,mapped.sharp);assertFalse(mapped.prepared);
+  Bitmap result=render(true,95,mapped,null,false);
+  for(int y=40;y<680;y+=80)for(int x=20;x<300;x+=40){
+   int left=result.getPixel(x,y),right=result.getPixel(x+320,y);
+   assertEquals("Both inner panes show the same current cover image",left,right);
+   assertEquals("Each pane retains the full cover width",(x+.5f)*255/320,Color.red(left),2);
+   assertEquals("The current source fills the destination height",(y+.5f)*255/720,Color.green(left),2);
+   assertEquals(80,Color.blue(left));assertEquals(255,Color.alpha(left));
+  }
+ }
+ @Test public void earlyOuterCoverUsesOnlyTheHardwareInnerRightPane()throws Exception{
+  Bitmap source=hardwareGradient(800,400);FrameTexture mapped=FrameTexture.sharp(source).transferSharp(true);
+  assertSame("Early cover cannot read back or copy the hardware bitmap",source,mapped.sharp);assertFalse(mapped.prepared);
+  Bitmap result=render(false,85,mapped,null,false);
+  for(int y=40;y<680;y+=80)for(int x=20;x<620;x+=80){
+   int pixel=result.getPixel(x,y);
+   assertEquals("Crop right half, not the full inner image or left pane",(400+(x+.5f)*400/640)*255/800,Color.red(pixel),2);
+   assertEquals("Right pane retains its complete height",(y+.5f)*255/720,Color.green(pixel),2);
+   assertEquals(80,Color.blue(pixel));assertEquals(255,Color.alpha(pixel));
+  }
+ }
+ private Bitmap hardwareGradient(int width,int height){
+  Bitmap source=Bitmap.createBitmap(width,height,Bitmap.Config.ARGB_8888);
+  for(int y=0;y<height;y++)for(int x=0;x<width;x++)source.setPixel(x,y,Color.rgb(Math.round(x*255f/width),Math.round(y*255f/height),80));
+  Bitmap hardware=source.copy(Bitmap.Config.HARDWARE,false);source.recycle();assertNotNull(hardware);assertEquals(Bitmap.Config.HARDWARE,hardware.getConfig());return hardware;
  }
  @Test public void saveCalibratedRenderingSamples()throws Exception{
   Context context=InstrumentationRegistry.getInstrumentation().getTargetContext();

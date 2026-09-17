@@ -6,7 +6,13 @@ import xml.etree.ElementTree as ET
 
 res = Path(__file__).resolve().parents[1] / "app/src/main/res"
 def strings(folder):
-    return {e.attrib["name"]: e.text or "" for e in ET.parse(res / folder / "strings.xml").getroot()}
+    result = {}
+    for path in sorted((res / folder).glob("*.xml")):
+        for entry in ET.parse(path).getroot().findall("string"):
+            name = entry.attrib["name"]
+            assert name not in result, f"重复文案：{folder}/{name}"
+            result[name] = entry.text or ""
+    return result
 
 default, chinese, english = strings("values"), strings("values-zh"), strings("values-en")
 assert default == chinese, "中文资源与默认资源不一致"

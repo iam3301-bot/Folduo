@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="home_theme_title">Home appearance</string>
+    <string name="home_theme_pearl">Pearl · Soft light</string>
+    <string name="home_theme_graphite">Graphite · Dark glass</string>
+    <string name="home_theme_sky">Sky · Blue glass</string>
+</resources>

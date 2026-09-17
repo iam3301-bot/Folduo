@@ -64,10 +64,10 @@ final class TaskDisplayRouter {
         if(source==destination){resumeHomeTask(id,destination);return;}
         Object sourceRoot=home(source),destinationRoot=home(destination);
         if(sourceRoot==null)throw new IllegalStateException("@folduo/err_source_home_missing");
-        // Keep Samsung's one-HOME-root-per-display invariant, but transfer the
-        // selected launcher's child task, not the other display's stale home.
+        // Resume the selected HOME child on its destination. Samsung rejects
+        // moveTaskToRootTask into a HOME root, even when the child is also HOME.
+        // startActivityFromRecents lets the system reparent it to the correct root.
         if(destinationRoot!=null&&id!=number(sourceRoot,"taskId")){
-            api.getMethod("moveTaskToRootTask",int.class,int.class,boolean.class).invoke(manager,id,number(destinationRoot,"taskId"),true);
             resumeHomeTask(id,destination);
         }else moveHome(sourceRoot,destination,true);
     }
@@ -77,10 +77,17 @@ final class TaskDisplayRouter {
         api.getMethod("setFocusedTask",int.class).invoke(manager,id);lastDestination=display;
     }
     private List<?> tasks(int display)throws Exception{return (List<?>)api.getMethod("getTasks",int.class,boolean.class,boolean.class,int.class).invoke(manager,1,false,false,display);}
+    synchronized Bundle foreground(int display)throws Exception{
+        List<?> current=tasks(display);
+        if(current.isEmpty())throw new IllegalStateException("@folduo/err_app_moved");
+        Object task=current.get(0);int type=activityType(task);
+        if(type!=1&&type!=2)throw new UnsupportedOperationException("@folduo/err_system_screen");
+        Bundle result=new Bundle();result.putInt("taskId",number(task,"taskId"));result.putBoolean("home",type==2);return result;
+    }
     synchronized Bundle move(int source,int destination,boolean idle)throws Exception{
         Bundle result=new Bundle();List<?> tasks=tasks(source);
         if(!tasks.isEmpty()&&activityType(tasks.get(0))==2){
-            moveHomeTask(tasks.get(0),destination);result.putBoolean("ok",true);result.putBoolean("moved",true);result.putBoolean("home",true);return result;
+            moveHomeTask(tasks.get(0),destination);result.putAll(foreground(destination));result.putBoolean("ok",true);result.putBoolean("moved",true);return result;
         }
         if(tasks.isEmpty()||!standard(tasks.get(0))){
             if(idle){result.putBoolean("ok",true);return result;}
@@ -91,7 +98,8 @@ final class TaskDisplayRouter {
         // Recents restarts the existing task on its destination. A bare reparent left it undrawn
         // on this Fold7. The framework still checks launch/display and task restrictions.
         Bundle options=ActivityOptions.makeBasic().setLaunchDisplayId(destination).toBundle();
-        api.getMethod("startActivityFromRecents",int.class,Bundle.class).invoke(manager,id,options);
+        int started=(int)api.getMethod("startActivityFromRecents",int.class,Bundle.class).invoke(manager,id,options);
+        if(started<0)throw new IllegalStateException("@folduo/err_launch_unconfirmed");
         lastDestination=destination;movedTasks.add(id);result.putBoolean("ok",true);result.putBoolean("moved",true);result.putInt("taskId",id);return result;
     }
     synchronized ArrayList<Bundle> recentApps(android.content.Context context)throws Exception{
